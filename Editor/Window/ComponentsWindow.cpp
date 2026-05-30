@@ -37,7 +37,7 @@ std::string ComponentsWindowRenderHandler::StatusToMessage(void)
 EditorWorkspace& ComponentsWindowRenderHandler::ReturnEditorWorkspaceObject(void)	{ return this->NewWorkspace; }
 ImVec2 ComponentsWindowRenderHandler::ReturnRegionContentAvail(void)				{ return this->CurrentViewportSize; }
 ImVec2 ComponentsWindowRenderHandler::ReturnPositionViewport(void)					{ return this->CurrentViewportPosition; }
-
+ImVec2 ComponentsWindowRenderHandler::ReturnViewportSafeSpace(void)					{ return this->ViewportSafeSpace; }
 
 void ComponentsWindowRenderHandler::ApplyLocalTheme(void)
 {
@@ -412,6 +412,9 @@ void ComponentsWindowRenderHandler::DrawAudioToolpack(void)
 
 void ComponentsWindowRenderHandler::ShowEditGizmo(Camera* EngineCamera, int ViewportWidth, int ViewportHeight)
 {
+	// @TODO - Perhaps make some parts persistant, this is especially when updating resolution and changing parts of the resolution
+	// would make it more efficent as it changes per user frame update than every frame.
+	
 	// This is moved from EditorMain.cpp -> ComponentsWindow.cpp
 	ImGuizmo::SetOrthographic(false);
 	ImGuizmo::SetDrawlist();
@@ -419,11 +422,13 @@ void ComponentsWindowRenderHandler::ShowEditGizmo(Camera* EngineCamera, int View
 	ImVec2 ViewportPos				= ImGui::GetWindowPos();
 	ImVec2 ViewportMinimumRegion	= ImGui::GetWindowContentRegionMin();
 	ImVec2 ViewportMaximumRegion	= ImGui::GetWindowContentRegionMax();
+	this->ViewportSafeSpace			= ImVec2(ViewportMaximumRegion.x - ViewportMinimumRegion.x, ViewportMaximumRegion.y - ViewportMinimumRegion.y); //Capture this per frame for any updates
+
 	ImGuizmo::SetRect(
 		ViewportPos.x + ViewportMinimumRegion.x,
 		ViewportPos.y + ViewportMinimumRegion.y,
-		ViewportMaximumRegion.x - ViewportMinimumRegion.x,
-		ViewportMaximumRegion.y - ViewportMinimumRegion.y
+		this->ViewportSafeSpace.x,
+		this->ViewportSafeSpace.y
 	);
 
 	if (this->SelectedIndex != -1 && (this->CurrentToolValue != VALUE_NULL && this->CurrentToolValue != VALUE_POINTER))
@@ -737,7 +742,7 @@ void ComponentsWindowRenderHandler::DrawRenderSceneWindow(GLFWwindow* EngineWind
 
 	this->CurrentViewportSize = ImGui::GetContentRegionAvail();
 	ImGui::Image((void*)(CurrentModule.FrameBufferTextureIndex), AvailScale, ImVec2(0, 1), ImVec2(1, 0));
-	this->ShowEditGizmo(EngineCamera, EngineCamera->Width, EngineCamera->Height);
+	this->ShowEditGizmo(EngineCamera, EngineCamera->Width, EngineCamera->Height); //Moved inside look to update region update
 	ImGui::End();
 
 	if (glfwGetMouseButton(EngineWindow,GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)

@@ -124,13 +124,29 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
         .ReturnEditorWorkspaceObject()
         .GetGeometryList();
 
+    ImVec2 CurrentMousePosition     = ImGui::GetMousePos();
+    // @EDIT - The process of using both ViewportWidth and ViewportHeight seems to not work and captures the upper bar. Perhaps due to rendering the upper bar as well?
+    // This might work. Its taken from ComponentsRenderHandler::ShowEditGizmo(), to render the system gizmo within viewport space.
+
+    // @EDITFIX - This seems to not work as we need the window to be active to capture the width and height, hence we should just get the safe space resolution
+    // from the main piece of the componentrender. Seems easier and well suited.
+
+    ImVec2 CurrentSafeSpace = this->NewSessionManager.GetEditorToolbar().ReturnViewportSafeSpace();
+
+    if (CurrentMousePosition.x > CurrentSafeSpace.x || CurrentMousePosition.y > CurrentSafeSpace.y)
+    {
+        // The mouse click is out of bounds. Lets ignore this for now, as we dont want to lose focus when clicking on a UI element
+        std::cout << "Out of bounds" << "\n";
+        return;
+    }
+
     this->RayOrigin     = NewCamera.ReturnCameraPosition();
     this->RayDirection  = glm::normalize(
         EditorUtilites::GetRayFromMouse(
             NewCamera.ReturnProjectionMatrix(),
             NewCamera.ReturnViewMatrix(),
-            this->NewSessionManager.GetCurrentMousePosition().x - 5.0f,
-            this->NewSessionManager.GetCurrentMousePosition().y - 5.0f,
+            CurrentMousePosition.x,
+            CurrentMousePosition.y,
             this->ViewportWidth,
             this->ViewportHeight
         )
@@ -187,9 +203,9 @@ void EditorMain::RenderEngine(void)
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
         this->NewSessionManager.GetEditorToolbar().ReturnEditorWorkspaceObject().DrawGeometryScene(&this->NewSessionManager.GetShaders().EntityShader, this->NewSessionManager.GetComponents().EngineCamera.ReturnProjectionMatrix(), this->NewSessionManager.GetComponents().EngineCamera.ReturnViewMatrix(), this->NewSessionManager.GetComponents().EngineCamera.ReturnCameraPosition());
-        this->SpecialKeyFunction();
         this->NewSessionManager.RenderEngine();
 
+        this->SpecialKeyFunction();
         this->SelectObjectFromWorld(this->NewSessionManager.GetEditorToolbar().ReturnPositionViewport());
 
         this->NewSessionManager.UnbindFrameBuffer();

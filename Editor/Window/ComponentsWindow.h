@@ -96,6 +96,7 @@ class ComponentsWindowRenderHandler
 		EditorWorkspace&						ReturnEditorWorkspaceObject(void);
 		ImVec2									ReturnRegionContentAvail(void);
 		ImVec2									ReturnPositionViewport(void);
+		ImVec2									ReturnViewportSafeSpace(void);
 		InterfaceTooltipValues					CurrentToolValue;
 		InterfaceValues							CurrentInterfaceValue;
 		InterfaceStatusValues					CurrentStatus;
@@ -110,6 +111,7 @@ class ComponentsWindowRenderHandler
 		void									FeedbackMenuSystem(void);
 
 		bool									FeedbackToggle;
+		ImVec2									ViewportSafeSpace;
 		ImVec2									CurrentViewportSize;
 		ImVec2									CurrentViewportPosition;
 		std::string								StatusToMessage(void);
