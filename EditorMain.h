@@ -5,14 +5,12 @@
 #include "Utilites/EditorUtilites.h"
 
 #include "../Resources/glm/gtx/matrix_decompose.hpp"
-#include "../Resources/imgui/ImGuizmo.h"
 
 class EditorMain
 {
     public:
                                     EditorMain(void);
         void                        StartEngine(void);
-        void                        ShowEditGizmo(int ViewportWidth, int ViewportHeight);
         void                        RenderEngine(void);
         void                        CloseEngine(void);
         void                        SpecialKeyFunction(void);
@@ -28,12 +26,6 @@ class EditorMain
         glm::vec3                   DragDelta;
         ImVec2                      EngineViewportSize;
         SessionManager              NewSessionManager;
-
-        glm::vec3                   ObjectScale;
-        glm::vec3                   ObjectTranslation;
-        glm::quat                   ObjectRotation;
-        glm::vec3                   Skew;
-        glm::vec4                   Perspective;
 };
 
 #endif

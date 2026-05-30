@@ -410,6 +410,62 @@ void ComponentsWindowRenderHandler::DrawAudioToolpack(void)
 	}
 }
 
+void ComponentsWindowRenderHandler::ShowEditGizmo(Camera* EngineCamera, int ViewportWidth, int ViewportHeight)
+{
+	// This is moved from EditorMain.cpp -> ComponentsWindow.cpp
+	ImGuizmo::SetOrthographic(false);
+	ImGuizmo::SetDrawlist();
+		
+	ImVec2 ViewportPos				= ImGui::GetWindowPos();
+	ImVec2 ViewportMinimumRegion	= ImGui::GetWindowContentRegionMin();
+	ImVec2 ViewportMaximumRegion	= ImGui::GetWindowContentRegionMax();
+	ImGuizmo::SetRect(
+		ViewportPos.x + ViewportMinimumRegion.x,
+		ViewportPos.y + ViewportMinimumRegion.y,
+		ViewportMaximumRegion.x - ViewportMinimumRegion.x,
+		ViewportMaximumRegion.y - ViewportMinimumRegion.y
+	);
+
+	if (this->SelectedIndex != -1 && (this->CurrentToolValue != VALUE_NULL && this->CurrentToolValue != VALUE_POINTER))
+	{
+		ImGuizmo::Style& NewStyle = ImGuizmo::GetStyle();
+
+		NewStyle.Colors[ImGuizmo::DIRECTION_X] = ImVec4(0.666f, 0.000f, 0.000f, 1.000f);
+		NewStyle.Colors[ImGuizmo::DIRECTION_Y] = ImVec4(0.000f, 0.666f, 0.000f, 1.000f);
+		NewStyle.Colors[ImGuizmo::DIRECTION_Z] = ImVec4(0.000f, 0.000f, 0.666f, 1.000f);
+
+		glm::mat4 ModelMatrix = this->NewWorkspace.GetPositionMatrix(this->SelectedIndex) *
+			this->NewWorkspace.GetRotationMatrix(this->SelectedIndex) *
+			this->NewWorkspace.GetScaleMatrix(this->SelectedIndex);
+
+
+		ImGuizmo::Manipulate(
+			glm::value_ptr(EngineCamera->ReturnViewMatrix()),
+			glm::value_ptr(EngineCamera->ReturnProjectionMatrix()),
+			(
+				this->CurrentToolValue == VALUE_TRANSLATE ? ImGuizmo::TRANSLATE : (this->CurrentToolValue == VALUE_ROTATE ? ImGuizmo::ROTATE : (this->CurrentToolValue == VALUE_SCALE ? ImGuizmo::SCALE : ImGuizmo::SCALE))),
+			ImGuizmo::LOCAL,
+			glm::value_ptr(ModelMatrix),
+			nullptr,
+			Console::IncrementValue
+		);
+
+		if (ImGuizmo::IsUsing())
+		{
+			// Change the properties, Skew and perspective
+			// @FIX: We dont need skew or perspective. Perhaps use a float store or something? (Just get rid of it)
+			if (glm::decompose(ModelMatrix, this->ObjectScale, this->ObjectRotation, this->ObjectTranslation, Skew, Perspective))
+			{
+				if (this->ObjectScale.x <= 0.1 || this->ObjectScale.y <= 0.1 || this->ObjectScale.z <= 0.1) { return; }
+
+				this->NewWorkspace.SetPosition(this->SelectedIndex, this->ObjectTranslation); // Moved the values of Translation, Rotation and Scale,
+				this->NewWorkspace.SetRotation(this->SelectedIndex, this->ObjectRotation);
+				this->NewWorkspace.SetScale(this->SelectedIndex, this->ObjectScale);
+			}
+		}
+	}
+}
+
 void ComponentsWindowRenderHandler::DrawMainToolbar(Camera* EngineCamera, Shader* EngineShader)
 {
 	// @FIX: This reduces the mirror effect from borders within IMGUI windows. Perhaps there is a unknown border control that produces this?
@@ -674,13 +730,14 @@ void ComponentsWindowRenderHandler::DrawDropdownMenu(const std::vector<ModelObje
 	ImGui::Separator();
 }
 
-void ComponentsWindowRenderHandler::DrawRenderSceneWindow(GLFWwindow* EngineWindow ,InterfaceRenderModule CurrentModule)
+void ComponentsWindowRenderHandler::DrawRenderSceneWindow(GLFWwindow* EngineWindow,Camera* EngineCamera,InterfaceRenderModule CurrentModule)
 {
 	ImGuiUtilies::BeginGradient(CurrentModule.RenderTitle.c_str(), this->DefaultButtonHovered);
 	ImVec2 AvailScale = ImGui::GetContentRegionAvail();
 
 	this->CurrentViewportSize = ImGui::GetContentRegionAvail();
 	ImGui::Image((void*)(CurrentModule.FrameBufferTextureIndex), AvailScale, ImVec2(0, 1), ImVec2(1, 0));
+	this->ShowEditGizmo(EngineCamera, EngineCamera->Width, EngineCamera->Height);
 	ImGui::End();
 
 	if (glfwGetMouseButton(EngineWindow,GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
@@ -735,7 +792,7 @@ void ComponentsWindowRenderHandler::DrawComponentWindow(GLFWwindow* EngineWindow
 	this->NewTextEditor.DrawCodeEditor({"","CoolText.fs"});
 	this->DrawAddComponentsMenu();
 	this->DrawTextureViewer();
-	this->DrawRenderSceneWindow(EngineWindow,{FrameBuffer,static_cast<int>(CurrentViewport->Size.x),static_cast<int>(CurrentViewport->Size.y),"MyScene"});
+	this->DrawRenderSceneWindow(EngineWindow,EngineCamera,{FrameBuffer,static_cast<int>(CurrentViewport->Size.x),static_cast<int>(CurrentViewport->Size.y),"MyScene"});
 
 	ImGui::End();
 	ImGui::Render();

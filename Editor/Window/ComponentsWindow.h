@@ -1,16 +1,20 @@
 #ifndef __COMPONENTS_WINDOWS_HEADER__
 #define __COMPONENTS_WINDOWS_HEADER__
 
+#define GLM_ENABLE_EXPERIMENTAL
+
 #include <map>
 
 #include "../../../Resources/glad/glad.h"
 #include "../../../Resources/glm/glm.hpp"
 #include "../../../Resources/GLFW/glfw3.h"
+#include "../../../Resources/glm/gtx/matrix_decompose.hpp"
 
 #include "../../../Resources/IconsFontAwesome5.h"
 #include "../../Rendering/Camera.h"
 #include "../../Utilites/ImGuiUtilites.h"
 #include "../EditorWorkspace.h"
+#include "../../../Resources/imgui/ImGuizmo.h"
 
 #include "PropertiesWindow.h"
 #include "CodeEditor.h"
@@ -76,10 +80,11 @@ class ComponentsWindowRenderHandler
 		void									LoadComponentWindow(void);
 		void									LoadIconFonts(void);
 		void									ApplyLocalTheme(void);
+		void									ShowEditGizmo(Camera* EngineCamera, int ViewportWidth, int ViewportHeight);
 		void									DrawComponentWindow(GLFWwindow* EngineWindow, Camera* EngineCamera, Shader* EngineShader, unsigned int FrameBuffer);
 		void									DrawTextureViewer(void);
 		void									DrawStatusBar(void);
-		void									DrawRenderSceneWindow(GLFWwindow* EngineWindow ,InterfaceRenderModule CurrentModule);
+		void									DrawRenderSceneWindow(GLFWwindow* EngineWindow, Camera* EngineCamera, InterfaceRenderModule CurrentModule);
 		void									DrawMainToolbar(Camera* EngineCamera, Shader* EngineShader);
 		void									DrawAddComponentsMenu(void);
 		void									DrawDropdownMenu(const std::vector< ModelObjectProperties>& DropdownContents);
@@ -119,6 +124,12 @@ class ComponentsWindowRenderHandler
 		std::vector<std::string>				WidgetTabs				= { "Geometry","Model","Debug","Audio" };
 		std::vector<InterfaceAdditionMenu>		AdditionComponentMenu	= { InterfaceAdditionMenu("Add Mesh",ICON_FA_CUBE), InterfaceAdditionMenu("Add Cube",ICON_FA_CUBE), InterfaceAdditionMenu("Add Lights",ICON_FA_LIGHTBULB), InterfaceAdditionMenu("Add Player",ICON_FA_MAGIC) };
 	
+		glm::vec3								ObjectScale;
+		glm::vec3								ObjectTranslation;
+		glm::quat								ObjectRotation;
+		glm::vec3								Skew;
+		glm::vec4								Perspective;
+
 		CodeEditor								NewTextEditor;
 		EditorWorkspace							NewWorkspace;
 		InterfaceSearchGroup					NewSearchGroup;

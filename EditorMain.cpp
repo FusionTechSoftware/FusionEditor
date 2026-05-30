@@ -5,10 +5,6 @@ EditorMain::EditorMain(void)
     this->LastNormalTrigger     = 0.0;
     this->ViewportHeight        = 0.0f;
     this->ViewportWidth         = 0.0f;
-
-    this->ObjectScale           = glm::vec3(0.0f);
-    this->ObjectTranslation     = glm::vec3(0.0f);
-    this->ObjectRotation        = glm::vec3(0.0f);
 };
 
 void MouseViewCallback(GLFWwindow* EngineWindow, int Button, int Action, int Mods)
@@ -116,57 +112,8 @@ void EditorMain::StartEngine(void)
     this->NewSessionManager.CreateFrameBuffer();
 }
 
-void EditorMain::ShowEditGizmo(int ViewportWidth, int ViewportHeight)
-{
-    ImGuizmo::SetOrthographic(false);
-    ImGuizmo::SetDrawlist();
-
-    ImVec2 ViewportPos = ImGui::GetWindowPos();
-    ImGuizmo::SetRect(ViewportPos.x, ViewportPos.y, ViewportWidth, ViewportHeight);
-
-    if (this->NewSessionManager.GetEditorToolbar().SelectedIndex != -1 && (this->NewSessionManager.GetEditorToolbar().CurrentToolValue != VALUE_NULL && this->NewSessionManager.GetEditorToolbar().CurrentToolValue != VALUE_POINTER))
-    {
-        ImGuizmo::Style& NewStyle = ImGuizmo::GetStyle();
-
-        NewStyle.Colors[ImGuizmo::DIRECTION_X] = ImVec4(0.666f, 0.000f, 0.000f, 1.000f);
-        NewStyle.Colors[ImGuizmo::DIRECTION_Y] = ImVec4(0.000f, 0.666f, 0.000f, 1.000f);
-        NewStyle.Colors[ImGuizmo::DIRECTION_Z] = ImVec4(0.000f, 0.000f, 0.666f, 1.000f);
-
-        glm::mat4 ModelMatrix = this->NewSessionManager.GetEditorToolbar().ReturnEditorWorkspaceObject().GetPositionMatrix(this->NewSessionManager.GetEditorToolbar().SelectedIndex) *
-            this->NewSessionManager.GetEditorToolbar().ReturnEditorWorkspaceObject().GetRotationMatrix(this->NewSessionManager.GetEditorToolbar().SelectedIndex) *
-            this->NewSessionManager.GetEditorToolbar().ReturnEditorWorkspaceObject().GetScaleMatrix(this->NewSessionManager.GetEditorToolbar().SelectedIndex);
-
-
-        ImGuizmo::Manipulate(
-            glm::value_ptr(this->NewSessionManager.GetComponents().EngineCamera.ReturnViewMatrix()),
-            glm::value_ptr(this->NewSessionManager.GetComponents().EngineCamera.ReturnProjectionMatrix()),
-            (
-                this->NewSessionManager.GetEditorToolbar().CurrentToolValue == VALUE_TRANSLATE ? ImGuizmo::TRANSLATE : (this->NewSessionManager.GetEditorToolbar().CurrentToolValue == VALUE_ROTATE ? ImGuizmo::ROTATE : (this->NewSessionManager.GetEditorToolbar().CurrentToolValue == VALUE_SCALE ? ImGuizmo::SCALE : ImGuizmo::SCALE))),
-            ImGuizmo::LOCAL,
-            glm::value_ptr(ModelMatrix),
-            nullptr,
-            Console::IncrementValue
-        );
-
-        if (ImGuizmo::IsUsing())
-        {
-            if (glm::decompose(ModelMatrix, this->ObjectScale, this->ObjectRotation, this->ObjectTranslation, Skew, Perspective))
-            {
-                if (this->ObjectScale.x <= 0.1 || this->ObjectScale.y <= 0.1 || this->ObjectScale.z <= 0.1) { return; }
-
-                this->NewSessionManager.GetEditorToolbar().ReturnEditorWorkspaceObject().SetPosition(this->NewSessionManager.GetEditorToolbar().SelectedIndex,this->ObjectTranslation);
-                this->NewSessionManager.GetEditorToolbar().ReturnEditorWorkspaceObject().SetRotation(this->NewSessionManager.GetEditorToolbar().SelectedIndex, this->ObjectRotation);
-                this->NewSessionManager.GetEditorToolbar().ReturnEditorWorkspaceObject().SetScale(this->NewSessionManager.GetEditorToolbar().SelectedIndex, this->ObjectScale);
-            }
-        }
-    }
-
-    this->SpecialKeyFunction();
-}
-
 void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
 {
-    if (Console::LockMouse)                             { return; }
     if (!ImGui::IsMouseClicked(ImGuiMouseButton_Left))  { return; }
 
     Camera NewCamera = this->NewSessionManager.GetComponents().EngineCamera;
@@ -240,10 +187,10 @@ void EditorMain::RenderEngine(void)
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
         this->NewSessionManager.GetEditorToolbar().ReturnEditorWorkspaceObject().DrawGeometryScene(&this->NewSessionManager.GetShaders().EntityShader, this->NewSessionManager.GetComponents().EngineCamera.ReturnProjectionMatrix(), this->NewSessionManager.GetComponents().EngineCamera.ReturnViewMatrix(), this->NewSessionManager.GetComponents().EngineCamera.ReturnCameraPosition());
+        this->SpecialKeyFunction();
         this->NewSessionManager.RenderEngine();
 
         this->SelectObjectFromWorld(this->NewSessionManager.GetEditorToolbar().ReturnPositionViewport());
-        //this->ShowEditGizmo(this->ViewportWidth, this->ViewportHeight);
 
         this->NewSessionManager.UnbindFrameBuffer();
 
