@@ -23,6 +23,7 @@ class Camera
         void            UpdateCameraView(GLFWwindow* EngineWindow,double XPosition,double YPosition);
         void            BindCameraMatrix(float FieldOfView,float NearPlane,float FarPlane,const glm::vec3& BindedPosition);
         void            MoveFunctionCamera(GLFWwindow* EngineWindow);
+        void            MoveFunctionScroll(GLFWwindow* EngineWindow, double XOffset, double YOffset);
 
         void            SetViewportSize(float width, float height, float FieldOfView, float Near, float Far);
         glm::vec3&      ReturnCameraPosition(void);

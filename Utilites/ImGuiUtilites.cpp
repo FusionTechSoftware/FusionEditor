@@ -1,8 +1,8 @@
 #include "ImGuiUtilites.h"
 
-ImGuiUtilies::ImGuiUtilies(void) {}
+ImGuiUtilites::ImGuiUtilites(void) {}
 
-bool ImGuiUtilies::ButtonGradient(const char* Label, ImVec2 Size,ImVec4 BorderColour, GradientBlock HoveredGradient, GradientBlock ActiveGradient, GradientBlock CurrentGradient)
+bool ImGuiUtilites::ButtonGradient(const char* Label, ImVec2 Size,ImVec4 BorderColour, GradientBlock HoveredGradient, GradientBlock ActiveGradient, GradientBlock CurrentGradient)
 {
     ImU32 Top, Bottom;
     ImVec2 Position = ImGui::GetCursorScreenPos();
@@ -52,7 +52,7 @@ bool ImGuiUtilies::ButtonGradient(const char* Label, ImVec2 Size,ImVec4 BorderCo
     return ImGui::IsItemClicked();
 }
 
-void ImGuiUtilies::GradientRect(ImVec2 Minimum, ImVec2 Maximum, GradientBlock CurrentGradient)
+void ImGuiUtilites::GradientRect(ImVec2 Minimum, ImVec2 Maximum, GradientBlock CurrentGradient)
 {
     ImDrawList* CurrentDrawList = ImGui::GetWindowDrawList();
 
@@ -63,11 +63,11 @@ void ImGuiUtilies::GradientRect(ImVec2 Minimum, ImVec2 Maximum, GradientBlock Cu
     );
 }
 
-void ImGuiUtilies::BeginGradient(const char* Name, GradientBlock CurrentGradient, bool* Open, ImGuiWindowFlags Flags)
+void ImGuiUtilites::BeginGradient(const char* Name, GradientBlock CurrentGradient, bool* Open, ImGuiWindowFlags Flags)
 {
     ImGui::Begin(Name, Open, Flags);
 
-    ImGuiUtilies::GradientRect(
+    ImGuiUtilites::GradientRect(
         ImGui::GetWindowPos(),
         ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x, ImGui::GetWindowPos().y + ImGui::GetWindowSize().y),
         CurrentGradient

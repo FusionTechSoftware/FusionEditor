@@ -114,7 +114,7 @@ void EditorMain::StartEngine(void)
 
 void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
 {
-    if (!ImGui::IsMouseClicked(ImGuiMouseButton_Left))  { return; }
+    if (!ImGui::IsMouseClicked(ImGuiMouseButton_Left))  { return; } //Return if not selected at all
 
     Camera NewCamera = this->NewSessionManager.GetComponents().EngineCamera;
 
@@ -140,6 +140,47 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
         return;
     }
 
+  
+    // @EDIT - This would be an edit that would use two types of selection systems. This would be done so that i can test other types
+    // of selection modes, with the one im testing being the older selection mode.
+#ifdef ALPHA_SELECTION_MODE
+
+    //Using the normal GL screen space rather than windowed screen space, perhaps this helps?
+    this->RayOrigin = NewCamera.ReturnCameraPosition();
+    this->RayDirection = glm::normalize(
+        EditorUtilites::GetRayFromMouse(
+            NewCamera.ReturnProjectionMatrix(),
+            NewCamera.ReturnViewMatrix(),
+            this->NewSessionManager.GetCurrentMousePosition().x,
+            this->NewSessionManager.GetCurrentMousePosition().y,
+            this->ViewportWidth,
+            this->ViewportHeight
+        )
+    );
+
+    float ClosestValue  = FLT_MAX;
+    int Selected        = -1;
+
+    for (int Index = 0; Index < this->CurrentGeometryData.size(); Index++)
+    {
+        float T;
+        GeometryData& CurrentObject = this->CurrentGeometryData[Index];
+        glm::vec3 MaximumBox        = CurrentObject.GeometryBoundingBox.MaximumBounds - glm::vec3(CurrentObject.Translation / glm::vec3(2.0f, 2.0f, 2.0f));
+        glm::vec3 MinimumBox        = CurrentObject.GeometryBoundingBox.MinimumBounds + glm::vec3(CurrentObject.Translation / glm::vec3(2.0f, 2.0f, 2.0f));
+    
+        if (EditorUtilites::DoesRayIntersectBounds(RayOrigin, RayDirection, MinimumBox, MaximumBox, T))
+        {
+            // @TODO - Maybe add DragDelta back to this version, i dont know what it does but im assuming it centers the cursor back to the center.
+            this->NewSessionManager.GetEditorToolbar().SelectedIndex = Index;
+        }
+        else
+        {
+            this->NewSessionManager.GetEditorToolbar().SelectedIndex = -1;
+        }
+    }
+
+#elif
+
     this->RayOrigin     = NewCamera.ReturnCameraPosition();
     this->RayDirection  = glm::normalize(
         EditorUtilites::GetRayFromMouse(
@@ -159,18 +200,18 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
     {
         float T;
         GeometryData& CurrentObject = this->CurrentGeometryData[Index];
-        glm::mat4 ModelMatrix       = CurrentObject.TranslationMatrix * CurrentObject.RotationMatrix * CurrentObject.ScaleMatrix;
-        glm::mat4 InverseModel      = glm::inverse(ModelMatrix);
+        glm::mat4 ModelMatrix = CurrentObject.TranslationMatrix * CurrentObject.RotationMatrix * CurrentObject.ScaleMatrix;
+        glm::mat4 InverseModel = glm::inverse(ModelMatrix);
 
-        glm::vec3 LocalOrigin       = glm::vec3(InverseModel * glm::vec4(this->RayOrigin, 1.0f));
-        glm::vec3 LocalDirection    = glm::normalize(glm::vec3(InverseModel * glm::vec4(this->RayDirection, 0.0f)));
+        glm::vec3 LocalOrigin = glm::vec3(InverseModel * glm::vec4(this->RayOrigin, 1.0f));
+        glm::vec3 LocalDirection = glm::normalize(glm::vec3(InverseModel * glm::vec4(this->RayDirection, 0.0f)));
 
         if (EditorUtilites::DoesRayIntersectBounds(LocalOrigin, LocalDirection, CurrentObject.GeometryBoundingBox.MinimumBounds, CurrentObject.GeometryBoundingBox.MaximumBounds, T))
         {
             if (T < ClosestValue)
             {
-                ClosestValue    = T;
-                Selected        = Index;
+                ClosestValue = T;
+                Selected = Index;
 
                 glm::vec3 LocalHit = LocalOrigin + LocalDirection * T;
                 glm::vec3 WorldHit = glm::vec3(ModelMatrix * glm::vec4(LocalHit, 1.0f));
@@ -181,6 +222,8 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
     }
 
     this->NewSessionManager.GetEditorToolbar().SelectedIndex = Selected;
+
+#endif
 }
 
 void EditorMain::RenderEngine(void)
@@ -192,6 +235,7 @@ void EditorMain::RenderEngine(void)
             this->ViewportWidth     = static_cast<int>(this->EngineViewportSize.x);
             this->ViewportHeight    = static_cast<int>(this->EngineViewportSize.y);
 
+            this->NewSessionManager.GetComponents().EngineCamera.UpdateCameraResolution(this->ViewportWidth, this->ViewportHeight);
             this->NewSessionManager.SetViewportResolution(ImVec2(this->ViewportWidth, this->ViewportHeight));
             this->NewSessionManager.RescaleFrameBuffer(this->ViewportWidth, this->ViewportHeight);
             glViewport(0, 0, this->ViewportWidth, this->ViewportHeight);

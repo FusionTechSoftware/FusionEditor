@@ -15,6 +15,7 @@ ComponentsWindowRenderHandler::ComponentsWindowRenderHandler(void)
 	this->CurrentToolValue	= VALUE_POINTER;
 	this->FeedbackToggle	= false;
 	this->SelectedIndex		= -1;
+	this->InstanceIndex		= 0;
 }
 
 std::string ComponentsWindowRenderHandler::StatusToMessage(void)
@@ -139,7 +140,7 @@ void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentVa
 
 	if (ImGui::BeginMainMenuBar())
 	{
-		ImGuiUtilies::GradientRect(
+		ImGuiUtilites::GradientRect(
 			ImGui::GetWindowPos(),
 			ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x, ImGui::GetWindowPos().y + ImGui::GetWindowSize().y),
 			{ IM_COL32(40, 40, 40, 255), IM_COL32(10, 10, 10, 255) }
@@ -196,7 +197,7 @@ void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentVa
 		ImGui::SetCursorPosX(ImGui::GetWindowWidth() - (ButtonWidth * 3) - 1500);
 		for (int Index = 0; Index < this->WidgetTabs.size(); Index++)
 		{
-			if (ImGuiUtilies::ButtonGradient(this->WidgetTabs[Index].c_str(), ImVec2(ImGui::CalcTextSize(("  "+this->WidgetTabs[Index]+"  ").c_str()).x, ImGui::GetFrameHeight()), ImVec4(20.0f, 20.0f, 20.0f, 120.0f), (this->CurrentWidget == this->WidgetTabs[Index] ? this->GreenButtonHovered : this->GreenButtonNormal), (this->CurrentWidget == this->WidgetTabs[Index] ? this->GreenButtonHovered : this->GreenButtonNormal), (this->CurrentWidget == this->WidgetTabs[Index] ? this->GreenButtonHovered : this->GreenButtonNormal)))
+			if (ImGuiUtilites::ButtonGradient(this->WidgetTabs[Index].c_str(), ImVec2(ImGui::CalcTextSize(("  "+this->WidgetTabs[Index]+"  ").c_str()).x, ImGui::GetFrameHeight()), ImVec4(20.0f, 20.0f, 20.0f, 120.0f), (this->CurrentWidget == this->WidgetTabs[Index] ? this->GreenButtonHovered : this->GreenButtonNormal), (this->CurrentWidget == this->WidgetTabs[Index] ? this->GreenButtonHovered : this->GreenButtonNormal), (this->CurrentWidget == this->WidgetTabs[Index] ? this->GreenButtonHovered : this->GreenButtonNormal)))
 			{ 
 				this->CurrentWidget = this->WidgetTabs[Index];
 			}
@@ -206,7 +207,7 @@ void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentVa
 
 #ifdef ALLOW_FEEDBACK
 		ImGui::SetCursorPosX(ImGui::GetWindowWidth() - (ButtonWidth * 3) - 400);
-		if (ImGuiUtilies::ButtonGradient("Have Feedback?", ImVec2(ImGui::CalcTextSize(" Have Feedback? ").x, ImGui::GetFrameHeight()), ImVec4(20.0f, 20.0f, 20.0f, 120.0f), this->BlueButtonHovered, this->BlueButtonHovered, this->BlueButtonHovered))
+		if (ImGuiUtilites::ButtonGradient("Have Feedback?", ImVec2(ImGui::CalcTextSize(" Have Feedback? ").x, ImGui::GetFrameHeight()), ImVec4(20.0f, 20.0f, 20.0f, 120.0f), this->BlueButtonHovered, this->BlueButtonHovered, this->BlueButtonHovered))
 		{
 			this->FeedbackToggle = !this->FeedbackToggle;
 		}
@@ -214,17 +215,17 @@ void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentVa
 
 		ImGui::SetCursorPosX(ImGui::GetWindowWidth() - (ButtonWidth * 3) - (Spacing * 3));
 
-		if (ImGuiUtilies::ButtonGradient("_",ImVec2(ButtonWidth, ImGui::GetFrameHeight()), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), this->DefaultButtonHovered,this->DefaultButtonActive,this->DefaultButtonNormal)) { glfwIconifyWindow(EngineWindow); }
+		if (ImGuiUtilites::ButtonGradient("_",ImVec2(ButtonWidth, ImGui::GetFrameHeight()), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), this->DefaultButtonHovered,this->DefaultButtonActive,this->DefaultButtonNormal)) { glfwIconifyWindow(EngineWindow); }
 		ImGui::SameLine(0, Spacing);
 
-		if (ImGuiUtilies::ButtonGradient((glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED) ? "[ ]" : "[]"), ImVec2(ButtonWidth, ImGui::GetFrameHeight()), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) 
+		if (ImGuiUtilites::ButtonGradient((glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED) ? "[ ]" : "[]"), ImVec2(ButtonWidth, ImGui::GetFrameHeight()), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal))
 		{ 
 			if (glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED))	{ glfwRestoreWindow(EngineWindow); }
 			else													{ glfwMaximizeWindow(EngineWindow); }
 		}
 		ImGui::SameLine(0, Spacing);
 
-		if (ImGuiUtilies::ButtonGradient("X", ImVec2(ButtonWidth, ImGui::GetFrameHeight()), ImVec4(0.0f, 0.0f, 0.0f, 120.0f),{ IM_COL32(200, 0, 0, 255), IM_COL32(30, 0, 0, 255) }, { IM_COL32(255, 10, 10, 255), IM_COL32(40, 0, 0, 255) }, { IM_COL32(60, 60, 60, 255), IM_COL32(20, 20, 20, 255) }))				
+		if (ImGuiUtilites::ButtonGradient("X", ImVec2(ButtonWidth, ImGui::GetFrameHeight()), ImVec4(0.0f, 0.0f, 0.0f, 120.0f),{ IM_COL32(200, 0, 0, 255), IM_COL32(30, 0, 0, 255) }, { IM_COL32(255, 10, 10, 255), IM_COL32(40, 0, 0, 255) }, { IM_COL32(60, 60, 60, 255), IM_COL32(20, 20, 20, 255) }))
 		{ 
 			glfwTerminate();
 			exit(0);
@@ -244,10 +245,36 @@ void ComponentsWindowRenderHandler::FeedbackMenuSystem(void)
 #endif
 }
 
+
+void ComponentsWindowRenderHandler::SpawnCubeInstance(Camera* EngineCamera,Shader* EngineShader)
+{
+	// Moved the creation instance to a seperate function for multiple instance creations within seperate windows
+	// reduces redundancy.
+	ModelObjectProperties NewObject;
+
+	float SpawnDistance		= 50.0f;
+	glm::vec3 Translation	= EngineCamera->ReturnCameraPosition() + glm::normalize(EngineCamera->Orientation) * SpawnDistance;
+	glm::quat Rotation		= glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
+	glm::vec3 Scale			= glm::vec3(10.0f, 10.0f, 10.0f);
+	
+	NewObject.Translate		= Translation;
+	NewObject.Rotation		= Rotation;
+	NewObject.Scale			= Scale;
+
+	NewObject.Index			= this->InstanceIndex; // @EDIT - We could use this as an index selection system using SelectedIndex perhaps?
+	NewObject.LabelName		= "NewObject" + (this->InstanceIndex > 1 ? " (" + std::to_string(this->InstanceIndex) + ")" : "");
+	NewObject.LabelPrefix	= ICON_FA_CUBE; // @TODO - We could edit this and add different predetermined objects (spheres,cubes,cones ect.)
+	
+	NewObject.ObjectDataType = DATATYPE_BLOCK; // Used to determine the type of object we are seeing.
+
+	this->ObjectProperties.push_back(NewObject);
+	this->NewWorkspace.CreateGeometryData(EngineShader, CubeVertices, CubeIndices, Translation, Rotation, Scale, "", SHAPE_BLOCK, -1);
+}
+
 void ComponentsWindowRenderHandler::ModeButton(const char* Icon, InterfaceTooltipValues Mode, const ImVec4& ActiveColor)
 {
 	bool IsActive = (this->CurrentToolValue == Mode);
-	if (ImGuiUtilies::ButtonGradient(Icon, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), (IsActive ? this->DefaultButtonUsed : this->DefaultButtonHovered), this->DefaultButtonActive, (IsActive ? this->DefaultButtonUsed : this->DefaultButtonNormal)))
+	if (ImGuiUtilites::ButtonGradient(Icon, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), (IsActive ? this->DefaultButtonUsed : this->DefaultButtonHovered), this->DefaultButtonActive, (IsActive ? this->DefaultButtonUsed : this->DefaultButtonNormal)))
 	{ this->CurrentToolValue = Mode; }
 }
 
@@ -265,14 +292,9 @@ void ComponentsWindowRenderHandler::DrawGeometryToolpack(Camera* EngineCamera, S
 	this->ModeButton(ICON_FA_EXPAND, VALUE_SCALE, ImVec4(0.10f, 0.65f, 0.35f, 1.00f));
 
 	ImGui::SetCursorPos(ImVec2(200.0f + (47.0f * 0), 5.0f));
-	if (ImGuiUtilies::ButtonGradient(ICON_FA_CUBE, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal))
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_CUBE, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal))
 	{
-		float SpawnDistance		= 50.0f;
-		glm::vec3 Translation	= EngineCamera->ReturnCameraPosition() + glm::normalize(EngineCamera->Orientation) * SpawnDistance;
-		glm::quat Rotation		= glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
-		glm::vec3 Scale			= glm::vec3(10.0f, 10.0f, 10.0f);
-
-		this->NewWorkspace.CreateGeometryData(EngineShader, CubeVertices, CubeIndices, Translation, Rotation, Scale, "", SHAPE_BLOCK, -1);
+		this->SpawnCubeInstance(EngineCamera, EngineShader);
 	}
 
 	if (ImGui::IsItemHovered())
@@ -283,7 +305,7 @@ void ComponentsWindowRenderHandler::DrawGeometryToolpack(Camera* EngineCamera, S
 	}
 
 	ImGui::SetCursorPos(ImVec2(200.0f + (47.0f * 1), 5.0f));
-	if (ImGuiUtilies::ButtonGradient(ICON_FA_LIGHTBULB, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_LIGHTBULB, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
@@ -292,7 +314,7 @@ void ComponentsWindowRenderHandler::DrawGeometryToolpack(Camera* EngineCamera, S
 	}
 
 	ImGui::SetCursorPos(ImVec2(200.0f + (47.0f * 2), 5.0f));
-	if (ImGuiUtilies::ButtonGradient(ICON_FA_CODE, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_CODE, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
@@ -301,7 +323,7 @@ void ComponentsWindowRenderHandler::DrawGeometryToolpack(Camera* EngineCamera, S
 	}
 
 	ImGui::SetCursorPos(ImVec2(200.0f + (47.0f * 3), 5.0f));
-	if (ImGuiUtilies::ButtonGradient(ICON_FA_TRASH, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_TRASH, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
@@ -310,7 +332,7 @@ void ComponentsWindowRenderHandler::DrawGeometryToolpack(Camera* EngineCamera, S
 	}
 
 	ImGui::SetCursorPos(ImVec2(200.0f + (47.0f * 4), 5.0f));
-	if (ImGuiUtilies::ButtonGradient(ICON_FA_MAGIC, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_MAGIC, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
@@ -319,7 +341,7 @@ void ComponentsWindowRenderHandler::DrawGeometryToolpack(Camera* EngineCamera, S
 	}
 
 	ImGui::SetCursorPos(ImVec2(200.0f + (47.0f * 5), 5.0f));
-	if (ImGuiUtilies::ButtonGradient(ICON_FA_ATOM, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_ATOM, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
@@ -361,7 +383,7 @@ void ComponentsWindowRenderHandler::DrawGeometryToolpack(Camera* EngineCamera, S
 
 void ComponentsWindowRenderHandler::DrawModelToolpack(void) 
 {
-	if (ImGuiUtilies::ButtonGradient(ICON_FA_LIGHTBULB, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_LIGHTBULB, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
@@ -372,7 +394,7 @@ void ComponentsWindowRenderHandler::DrawModelToolpack(void)
 
 void ComponentsWindowRenderHandler::DrawDebugToolpack(void) 
 {
-	if (ImGuiUtilies::ButtonGradient(ICON_FA_FAST_FORWARD, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_FAST_FORWARD, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
@@ -381,7 +403,7 @@ void ComponentsWindowRenderHandler::DrawDebugToolpack(void)
 	}
 
 	ImGui::SameLine();
-	if (ImGuiUtilies::ButtonGradient(ICON_FA_HOURGLASS_START, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_HOURGLASS_START, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
@@ -390,7 +412,7 @@ void ComponentsWindowRenderHandler::DrawDebugToolpack(void)
 	}
 
 	ImGui::SameLine();
-	if (ImGuiUtilies::ButtonGradient(ICON_FA_DRAW_POLYGON, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_DRAW_POLYGON, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
@@ -401,7 +423,7 @@ void ComponentsWindowRenderHandler::DrawDebugToolpack(void)
 
 void ComponentsWindowRenderHandler::DrawAudioToolpack(void) 
 {
-	if (ImGuiUtilies::ButtonGradient(ICON_FA_LIGHTBULB, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_LIGHTBULB, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
@@ -492,7 +514,7 @@ void ComponentsWindowRenderHandler::DrawMainToolbar(Camera* EngineCamera, Shader
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 10.0f);
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(7.0f, 8.0f));
 
-	ImGuiUtilies::GradientRect(
+	ImGuiUtilites::GradientRect(
 		ImGui::GetWindowPos(),
 		ImVec2(ImGui::GetWindowPos().x + ImGui::GetWindowSize().x, ImGui::GetWindowPos().y + ImGui::GetWindowSize().y),
 		{ IM_COL32(50, 50, 50, 255), IM_COL32(20, 20, 20, 255) }
@@ -523,7 +545,7 @@ void ComponentsWindowRenderHandler::DrawAddComponentsMenu(void)
 	const float Padding			= 16.0f;
 	const float CellSize		= ThumbnailSize + Padding;
 
-	ImGuiUtilies::BeginGradient("Component Menu", this->DefaultButtonHovered);
+	ImGuiUtilites::BeginGradient("Component Menu", this->DefaultButtonHovered);
 
 	if (ImGui::BeginChild("ScrollingRegion", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_HorizontalScrollbar))
 	{
@@ -537,7 +559,7 @@ void ComponentsWindowRenderHandler::DrawAddComponentsMenu(void)
 		{
 			Label = this->AdditionComponentMenu[Index].Icons + " " + this->AdditionComponentMenu[Index].Name;
 			
-			if (ImGuiUtilies::ButtonGradient(Label.c_str(), ImVec2(120.0f, 30.0f), ImVec4(0.0f,0.0f,0.0f,120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+			if (ImGuiUtilites::ButtonGradient(Label.c_str(), ImVec2(120.0f, 30.0f), ImVec4(0.0f,0.0f,0.0f,120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
 
 			if (++Count % Columns != 0) { ImGui::SameLine(); }
 		}
@@ -556,7 +578,7 @@ void ComponentsWindowRenderHandler::DrawStatusBar(void)
 	ImGui::SetNextWindowSize(ImVec2(CurrentViewport->Size.x, Height));
 	ImGui::SetNextWindowViewport(CurrentViewport->ID);
 
-	ImGuiUtilies::BeginGradient("##StatusBar", this->DefaultButtonHovered, nullptr, CurrentFlags);
+	ImGuiUtilites::BeginGradient("##StatusBar", this->DefaultButtonHovered, nullptr, CurrentFlags);
 	ImGui::Text(this->StatusToMessage().c_str());
 	ImGui::SameLine();
 	ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
@@ -571,11 +593,11 @@ void ComponentsWindowRenderHandler::DrawTextureViewer(void)
 	int CurrentIndex						= 0;
 	static std::string FolderSelectedName	= "Textures";
 
-	ImGuiUtilies::BeginGradient("Asset Viewer", this->DefaultButtonHovered);
+	ImGuiUtilites::BeginGradient("Asset Viewer", this->DefaultButtonHovered);
 
 	for (int Index = 0; Index < this->GroupFolders.size(); Index++)
 	{
-		if (ImGuiUtilies::ButtonGradient(this->GroupFolders[Index].c_str(),ImVec2(ImGui::CalcTextSize(this->GroupFolders[Index].c_str()).x + TextPadding, 20.0f), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { FolderSelectedName = GroupFolders[Index]; }
+		if (ImGuiUtilites::ButtonGradient(this->GroupFolders[Index].c_str(),ImVec2(ImGui::CalcTextSize(this->GroupFolders[Index].c_str()).x + TextPadding, 20.0f), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { FolderSelectedName = GroupFolders[Index]; }
 		ImGui::SameLine();
 	}
 
@@ -638,7 +660,7 @@ void ComponentsWindowRenderHandler::DrawSettings(InterfaceValues CurrentValues)
 {
 	if (CurrentValues.IsSettingsMenuOpen)
 	{
-		ImGuiUtilies::BeginGradient("Fusion Settings", this->DefaultButtonHovered);
+		ImGuiUtilites::BeginGradient("Fusion Settings", this->DefaultButtonHovered);
 
 		if (ImGui::BeginTabBar("MainTabs"))
 		{
@@ -737,7 +759,7 @@ void ComponentsWindowRenderHandler::DrawDropdownMenu(const std::vector<ModelObje
 
 void ComponentsWindowRenderHandler::DrawRenderSceneWindow(GLFWwindow* EngineWindow,Camera* EngineCamera,InterfaceRenderModule CurrentModule)
 {
-	ImGuiUtilies::BeginGradient(CurrentModule.RenderTitle.c_str(), this->DefaultButtonHovered);
+	ImGuiUtilites::BeginGradient(CurrentModule.RenderTitle.c_str(), this->DefaultButtonHovered);
 	ImVec2 AvailScale = ImGui::GetContentRegionAvail();
 
 	this->CurrentViewportSize = ImGui::GetContentRegionAvail();
@@ -788,9 +810,9 @@ void ComponentsWindowRenderHandler::DrawComponentWindow(GLFWwindow* EngineWindow
 	this->CurrentViewportPosition = ImGui::GetCursorScreenPos();
 	this->DrawToolbarWidget(this->CurrentInterfaceValue, EngineWindow, EngineCamera->ReturnProjectionMatrix(), EngineCamera->ReturnViewMatrix(), EngineCamera->ReturnCameraPosition());
 	this->DrawSettings(this->CurrentInterfaceValue);
-	this->DrawDropdownMenu({});
 	this->DrawStatusBar();
 	this->DrawMainToolbar(EngineCamera, EngineShader);
+	this->DrawDropdownMenu(this->ObjectProperties);
 	this->NewWorkspace.SetSelectedIndex(this->SelectedIndex);
 
 	this->FeedbackMenuSystem();

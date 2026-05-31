@@ -9,6 +9,13 @@ Camera::Camera(void)
     this->Far       = 0;
 }
 
+void LocalScrollCallback(GLFWwindow* EngineWindow, double XOffset, double YOffset)
+{
+    // @EDIT - Just a basic wrapper from GLFW -> Camera object system.
+    Camera* CameraObject = static_cast<Camera*>(glfwGetWindowUserPointer(EngineWindow));
+    CameraObject->MoveFunctionScroll(EngineWindow, XOffset, YOffset);
+}
+
 glm::vec3& Camera::ReturnCameraPosition(void)       {return this->Position;}
 glm::mat4& Camera::ReturnProjectionMatrix(void)     {return this->ProjectionMatrix;}
 glm::mat4& Camera::ReturnViewMatrix(void)           {return this->ViewMatrix;}
@@ -100,13 +107,29 @@ void Camera::UpdateCameraView(GLFWwindow* EngineWindow,double XPosition,double Y
     this->Orientation   = glm::normalize(this->Orientation);
 }
 
+void Camera::MoveFunctionScroll(GLFWwindow* EngineWindow,double XOffset,double YOffset)
+{
+    // @TODO - Maybe you could also capture the focus on windows rather than mostly text input when using scrolls. We might need scrollwheel to
+    // scroll down elements.
+    if (!(ImGui::GetIO().WantTextInput))
+    {
+        if (YOffset > 0)    { this->Position += 5.0f * this->Orientation; }
+        else                { this->Position += 5.0f * -this->Orientation; } // We could speed this up with the duration of scroll wheel?
+    }
+}
+
 void Camera::MoveFunctionCamera(GLFWwindow* EngineWindow)
 {
+    // @EDIT - These would be normal inputs for which would be bounded upon the normal keys and locked when text is needed / ctrl is used.
+    // @TODO - Make the keys more modular and interchangeable (perhaps a key system using register?)
     if (glfwGetKey(EngineWindow, GLFW_KEY_LEFT_CONTROL) != GLFW_PRESS && !(ImGui::GetIO().WantTextInput))
     {
-        if (glfwGetKey(EngineWindow, GLFW_KEY_W) == GLFW_PRESS) { this->Position += 5.0f * Orientation; }
+        if (glfwGetKey(EngineWindow, GLFW_KEY_W) == GLFW_PRESS) { this->Position += 5.0f * this->Orientation; }
         if (glfwGetKey(EngineWindow, GLFW_KEY_A) == GLFW_PRESS) { this->Position += 5.0f * -glm::normalize(glm::cross(Orientation, glm::vec3(0.0f, 1.0f, 0.0f))); }
-        if (glfwGetKey(EngineWindow, GLFW_KEY_S) == GLFW_PRESS) { this->Position += 5.0f * -Orientation; }
+        if (glfwGetKey(EngineWindow, GLFW_KEY_S) == GLFW_PRESS) { this->Position += 5.0f * -this->Orientation; }
         if (glfwGetKey(EngineWindow, GLFW_KEY_D) == GLFW_PRESS) { this->Position += 5.0f * glm::normalize(glm::cross(Orientation, glm::vec3(0.0f, 1.0f, 0.0f))); }
     }
+
+    glfwSetWindowUserPointer(EngineWindow, this);
+    glfwSetScrollCallback(EngineWindow, LocalScrollCallback);
 }

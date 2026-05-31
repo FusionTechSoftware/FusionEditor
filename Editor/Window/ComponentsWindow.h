@@ -103,6 +103,8 @@ class ComponentsWindowRenderHandler
 
 	private:
 
+		void									SpawnCubeInstance(Camera* EngineCamera, Shader* EngineShader);
+		
 		void									DrawAudioToolpack(void);
 		void									DrawDebugToolpack(void);
 		void									DrawModelToolpack(void);
@@ -110,6 +112,7 @@ class ComponentsWindowRenderHandler
 		void									ModeButton(const char* Icon, InterfaceTooltipValues Mode, const ImVec4& ActiveColor);
 		void									FeedbackMenuSystem(void);
 
+		int										InstanceIndex;
 		bool									FeedbackToggle;
 		ImVec2									ViewportSafeSpace;
 		ImVec2									CurrentViewportSize;
@@ -125,7 +128,8 @@ class ComponentsWindowRenderHandler
 		std::vector<std::string>				GroupFolders			= { "Textures","Skybox","Models" };
 		std::vector<std::string>				WidgetTabs				= { "Geometry","Model","Debug","Audio" };
 		std::vector<InterfaceAdditionMenu>		AdditionComponentMenu	= { InterfaceAdditionMenu("Add Mesh",ICON_FA_CUBE), InterfaceAdditionMenu("Add Cube",ICON_FA_CUBE), InterfaceAdditionMenu("Add Lights",ICON_FA_LIGHTBULB), InterfaceAdditionMenu("Add Player",ICON_FA_MAGIC) };
-	
+		std::vector<ModelObjectProperties>		ObjectProperties;
+
 		glm::vec3								ObjectScale;
 		glm::vec3								ObjectTranslation;
 		glm::quat								ObjectRotation;

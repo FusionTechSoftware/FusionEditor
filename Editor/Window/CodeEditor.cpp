@@ -23,7 +23,7 @@ void CodeEditor::SetupCodeEditor(const std::string& FileName)
 
 void CodeEditor::DrawCodeEditor(InterfaceTextModule CurrentModule)
 {
-	ImGuiUtilies::BeginGradient(CurrentModule.TextTitle.c_str(), this->CodeGradientBlock, nullptr);
+	ImGuiUtilites::BeginGradient(CurrentModule.TextTitle.c_str(), this->CodeGradientBlock, nullptr);
 
 	if (this->SyntaxDefinition.mExtension == "unknown" || !this->IsFileTypeCorrect(CurrentModule.TextTitle, this->SyntaxDefinition.mExtension))
 	{
