@@ -32,10 +32,10 @@ class Camera
 
         glm::vec3       UpPosition          = glm::vec3(0.0f,1.0f,0.0f);
         glm::vec3       Orientation         = glm::vec3(0.0f,0.0f,-1.0f);
-        int             Width;
-        int             Height;
-        float             Near;
-        float             Far;
+        float           Width;
+        float           Height;
+        float           Near;
+        float           Far;
     private:
 
         glm::vec3       Position;

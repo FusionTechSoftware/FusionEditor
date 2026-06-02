@@ -25,8 +25,7 @@ void Camera::UpdateCameraResolution(int WindowWidth,int WindowHeight)   {this->W
 
 void Camera::SetViewportSize(float Width, float Height,float FieldOfView,float Near,float Far)
 {
-    if (Height <= 0.0f) {Height = 1.0f;}
-
+    // @EDIT - Why is this here? Is this called or something at the start? I need to figure out!
     float AspectRatio   = Width / Height;
     this->Width         = Width;
     this->Height        = Height;
@@ -43,17 +42,23 @@ void Camera::SpawnCamera(int WindowWidth,int WindowHeight,const glm::vec3& Camer
 
 void Camera::UpdateCameraMatrix(float FieldOfView,float NearPlane,float FarPlane,int WindowWidth,int WindowHeight)
 {
-    this->Width             = WindowWidth;
-    this->Height            = WindowHeight;
+    float AspectRatio       = this->Width / this->Height;
+    AspectRatio             = glm::clamp(AspectRatio, 0.3f, 5.0f);
 
     this->Near              = NearPlane;
     this->Far               = FarPlane;
-    this->ProjectionMatrix  = glm::perspective(glm::radians(FieldOfView),(float)(this->Width/this->Height), NearPlane,FarPlane);
+    this->ProjectionMatrix  = glm::perspective(glm::radians(FieldOfView),(float)(AspectRatio), NearPlane,FarPlane);
     this->ViewMatrix        = glm::lookAt(this->Position,this->Position+this->Orientation,this->UpPosition);
 }
 
 void Camera::BindCameraMatrix(float FieldOfView,float NearPlane,float FarPlane,const glm::vec3& BindedPosition)
 {
+    // @EDIT - This function was primarily used for 3rd person camera view when rendering something or when 
+    // we are following an object, bind the position to the object. We need to add new stuff from UpdateCameraMatrix() 
+    // as thats the main function that we are focused on
+
+    // @EDIT - Perhaps use that function with a parameter for perspective view?
+
     this->Near              = NearPlane;
     this->Far               = FarPlane;
     this->ProjectionMatrix  = glm::perspective(glm::radians(FieldOfView),(float)(this->Width/this->Height),NearPlane,FarPlane);

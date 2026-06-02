@@ -39,6 +39,9 @@ EditorWorkspace& ComponentsWindowRenderHandler::ReturnEditorWorkspaceObject(void
 ImVec2 ComponentsWindowRenderHandler::ReturnRegionContentAvail(void)				{ return this->CurrentViewportSize; }
 ImVec2 ComponentsWindowRenderHandler::ReturnPositionViewport(void)					{ return this->CurrentViewportPosition; }
 ImVec2 ComponentsWindowRenderHandler::ReturnViewportSafeSpace(void)					{ return this->ViewportSafeSpace; }
+ImVec2 ComponentsWindowRenderHandler::ReturnViewportLocalScreenPosition(void)		{ return this->CurrentLocalScreenPosition; }
+ImVec2 ComponentsWindowRenderHandler::ReturnViewportRectMin(void)					{ return this->CurrentViewportRectMin; }
+ImVec2 ComponentsWindowRenderHandler::ReturnViewportRectSize(void)					{ return this->CurrentViewportRectSize; }
 
 void ComponentsWindowRenderHandler::ApplyLocalTheme(void)
 {
@@ -256,6 +259,8 @@ void ComponentsWindowRenderHandler::SpawnCubeInstance(Camera* EngineCamera,Shade
 	glm::vec3 Translation	= EngineCamera->ReturnCameraPosition() + glm::normalize(EngineCamera->Orientation) * SpawnDistance;
 	glm::quat Rotation		= glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 	glm::vec3 Scale			= glm::vec3(10.0f, 10.0f, 10.0f);
+
+	std::cout << "TRANS: " << Translation.x << "," << Translation.y << "," << Translation.z << "\n";
 	
 	NewObject.Translate		= Translation;
 	NewObject.Rotation		= Rotation;
@@ -760,16 +765,21 @@ void ComponentsWindowRenderHandler::DrawDropdownMenu(const std::vector<ModelObje
 void ComponentsWindowRenderHandler::DrawRenderSceneWindow(GLFWwindow* EngineWindow,Camera* EngineCamera,InterfaceRenderModule CurrentModule)
 {
 	ImGuiUtilites::BeginGradient(CurrentModule.RenderTitle.c_str(), this->DefaultButtonHovered);
-	ImVec2 AvailScale = ImGui::GetContentRegionAvail();
+	this->CurrentViewportSize			= ImGui::GetContentRegionAvail();
+	this->CurrentViewportSize.x			= std::max(1.0f, this->CurrentViewportSize.x);
+	this->CurrentViewportSize.y			= std::max(1.0f, this->CurrentViewportSize.y);
 
-	this->CurrentViewportSize = ImGui::GetContentRegionAvail();
-	ImGui::Image((void*)(CurrentModule.FrameBufferTextureIndex), AvailScale, ImVec2(0, 1), ImVec2(1, 0));
+	this->CurrentLocalScreenPosition	= ImGui::GetWindowPos(); // Apparantly this would return the top corner of the window as its position.
+	this->CurrentViewportRectMin		= ImGui::GetItemRectMin();
+	this->CurrentViewportRectSize		= ImGui::GetItemRectSize();
+
+	ImGui::Image((void*)(CurrentModule.FrameBufferTextureIndex), this->CurrentViewportSize, ImVec2(0, 1), ImVec2(1, 0));
 	this->ShowEditGizmo(EngineCamera, EngineCamera->Width, EngineCamera->Height); //Moved inside look to update region update
 	ImGui::End();
 
 	if (glfwGetMouseButton(EngineWindow,GLFW_MOUSE_BUTTON_2) == GLFW_PRESS)
 	{
-		if (ImGui::IsMouseHoveringRect(ImVec2(0.0f, 0.0f), AvailScale))
+		if (ImGui::IsMouseHoveringRect(ImVec2(0.0f, 0.0f), this->CurrentViewportSize))
 		{
 			glfwSetInputMode(EngineWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 			Console::LockMouse = false;

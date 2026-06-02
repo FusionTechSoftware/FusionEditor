@@ -6,7 +6,7 @@
 
 #include "../Resources/glm/gtx/matrix_decompose.hpp"
 
-#define ALPHA_SELECTION_MODE
+//#define ALPHA_SELECTION_MODE
 
 class EditorMain
 {

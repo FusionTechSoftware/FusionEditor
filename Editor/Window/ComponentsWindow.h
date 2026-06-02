@@ -97,6 +97,10 @@ class ComponentsWindowRenderHandler
 		ImVec2									ReturnRegionContentAvail(void);
 		ImVec2									ReturnPositionViewport(void);
 		ImVec2									ReturnViewportSafeSpace(void);
+		ImVec2									ReturnViewportLocalScreenPosition(void);
+		ImVec2									ReturnViewportRectMin(void);
+		ImVec2									ReturnViewportRectSize(void);
+
 		InterfaceTooltipValues					CurrentToolValue;
 		InterfaceValues							CurrentInterfaceValue;
 		InterfaceStatusValues					CurrentStatus;
@@ -116,9 +120,12 @@ class ComponentsWindowRenderHandler
 		bool									FeedbackToggle;
 		ImVec2									ViewportSafeSpace;
 		ImVec2									CurrentViewportSize;
+		ImVec2									CurrentLocalScreenPosition;
 		ImVec2									CurrentViewportPosition;
-		std::string								StatusToMessage(void);
+		ImVec2									CurrentViewportRectMin;
+		ImVec2									CurrentViewportRectSize;
 
+		std::string								StatusToMessage(void);
 		std::map<std::string, unsigned int>		TextureGroup;
 		std::map<std::string, unsigned int>		SkyboxGroup;
 		std::map<std::string, unsigned int>		ModelGroup;

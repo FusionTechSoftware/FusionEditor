@@ -124,80 +124,44 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
         .ReturnEditorWorkspaceObject()
         .GetGeometryList();
 
+    // @EDIT - It seems as if the mouse position is fetched within ImGuis perspective, hence we can use this to our advantage with the ReturnRegionContentAvail() function for which would produce a bound system 
+    // across the viewport window, hence if the window escapes that bounds, the input is invalid. 
     ImVec2 CurrentMousePosition     = ImGui::GetMousePos();
-    // @EDIT - The process of using both ViewportWidth and ViewportHeight seems to not work and captures the upper bar. Perhaps due to rendering the upper bar as well?
-    // This might work. Its taken from ComponentsRenderHandler::ShowEditGizmo(), to render the system gizmo within viewport space.
+    ImVec2 ViewportContentRegion    = this->NewSessionManager.GetEditorToolbar().ReturnRegionContentAvail();
+    ImVec2 ViewportContentCorner    = this->NewSessionManager.GetEditorToolbar().ReturnViewportLocalScreenPosition(); // This would be used for the region above the window, the spaces the first region cannot get.
+    ImVec2 ViewportItemRectMin      = this->NewSessionManager.GetEditorToolbar().ReturnViewportRectMin();
+    ImVec2 ViewportItemRectSize     = this->NewSessionManager.GetEditorToolbar().ReturnViewportRectSize();
 
-    // @EDITFIX - This seems to not work as we need the window to be active to capture the width and height, hence we should just get the safe space resolution
-    // from the main piece of the componentrender. Seems easier and well suited.
+    // Check if the mouse position is within bounds from the viewport system. Ignores if out of bounds.
+    if (CurrentMousePosition.x > ViewportContentRegion.x || CurrentMousePosition.y > ViewportContentRegion.y)   { return; }
+    if (CurrentMousePosition.x < ViewportContentCorner.x || CurrentMousePosition.y < ViewportContentCorner.y)   { return; } // Do the same for the region the first statement cannot touch.
 
-    ImVec2 CurrentSafeSpace = this->NewSessionManager.GetEditorToolbar().ReturnViewportSafeSpace();
-
-    if (CurrentMousePosition.x > CurrentSafeSpace.x || CurrentMousePosition.y > CurrentSafeSpace.y)
-    {
-        // The mouse click is out of bounds. Lets ignore this for now, as we dont want to lose focus when clicking on a UI element
-        std::cout << "Out of bounds" << "\n";
-        return;
-    }
-
-  
-    // @EDIT - This would be an edit that would use two types of selection systems. This would be done so that i can test other types
-    // of selection modes, with the one im testing being the older selection mode.
-#ifdef ALPHA_SELECTION_MODE
-
-    //Using the normal GL screen space rather than windowed screen space, perhaps this helps?
-    this->RayOrigin = NewCamera.ReturnCameraPosition();
-    this->RayDirection = glm::normalize(
-        EditorUtilites::GetRayFromMouse(
-            NewCamera.ReturnProjectionMatrix(),
-            NewCamera.ReturnViewMatrix(),
-            this->NewSessionManager.GetCurrentMousePosition().x,
-            this->NewSessionManager.GetCurrentMousePosition().y,
-            this->ViewportWidth,
-            this->ViewportHeight
-        )
-    );
-
-    float ClosestValue  = FLT_MAX;
-    int Selected        = -1;
-
-    for (int Index = 0; Index < this->CurrentGeometryData.size(); Index++)
-    {
-        float T;
-        GeometryData& CurrentObject = this->CurrentGeometryData[Index];
-        glm::vec3 MaximumBox        = CurrentObject.GeometryBoundingBox.MaximumBounds - glm::vec3(CurrentObject.Translation / glm::vec3(2.0f, 2.0f, 2.0f));
-        glm::vec3 MinimumBox        = CurrentObject.GeometryBoundingBox.MinimumBounds + glm::vec3(CurrentObject.Translation / glm::vec3(2.0f, 2.0f, 2.0f));
-    
-        if (EditorUtilites::DoesRayIntersectBounds(RayOrigin, RayDirection, MinimumBox, MaximumBox, T))
-        {
-            // @TODO - Maybe add DragDelta back to this version, i dont know what it does but im assuming it centers the cursor back to the center.
-            this->NewSessionManager.GetEditorToolbar().SelectedIndex = Index;
-        }
-        else
-        {
-            this->NewSessionManager.GetEditorToolbar().SelectedIndex = -1;
-        }
-    }
-
-#elif
+    float MouseX = (2.0f * (CurrentMousePosition.x - ViewportItemRectMin.x)) / ViewportItemRectSize.x - 1.0f;
+    float MouseY = 1.0f - (2.0f * (CurrentMousePosition.y - ViewportItemRectMin.y)) / ViewportItemRectSize.y;
 
     this->RayOrigin     = NewCamera.ReturnCameraPosition();
-    this->RayDirection  = glm::normalize(
-        EditorUtilites::GetRayFromMouse(
-            NewCamera.ReturnProjectionMatrix(),
-            NewCamera.ReturnViewMatrix(),
-            CurrentMousePosition.x,
-            CurrentMousePosition.y,
-            this->ViewportWidth,
-            this->ViewportHeight
-        )
-    );
+    //this->RayDirection  = glm::normalize(
+    //    EditorUtilites::GetRayFromMouse(
+    //        NewCamera.ReturnProjectionMatrix(),
+    //        NewCamera.ReturnViewMatrix(),
+    //        MouseX, MouseY,
+    //        this->ViewportWidth,
+    //        this->ViewportHeight
+    //    )
+    //);
 
+    std::cout << "Origin: " << this->RayOrigin.x << "," << this->RayOrigin.y << "," << this->RayOrigin.z << "\n";
+    std::cout << "Direction: " << this->RayDirection.x << "," << this->RayDirection.y << "," << this->RayDirection.z << "\n";
+ 
     float ClosestValue  = FLT_MAX;
     int Selected        = -1;
 
     for (int Index = 0; Index < this->CurrentGeometryData.size(); Index++)
     {
+        std::cout << "Position Index " << Index << ": " << this->CurrentGeometryData[Index].Translation.x << "," << this->CurrentGeometryData[Index].Translation.y << "," << this->CurrentGeometryData[Index].Translation.z << "\n";
+
+        this->RayDirection = glm::normalize(this->CurrentGeometryData[Index].Translation - NewCamera.ReturnCameraPosition());
+
         float T;
         GeometryData& CurrentObject = this->CurrentGeometryData[Index];
         glm::mat4 ModelMatrix = CurrentObject.TranslationMatrix * CurrentObject.RotationMatrix * CurrentObject.ScaleMatrix;
@@ -222,8 +186,6 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
     }
 
     this->NewSessionManager.GetEditorToolbar().SelectedIndex = Selected;
-
-#endif
 }
 
 void EditorMain::RenderEngine(void)
@@ -232,8 +194,12 @@ void EditorMain::RenderEngine(void)
     {
         if (this->EngineViewportSize.x != this->ViewportWidth || this->EngineViewportSize.y != this->ViewportHeight)
         {
-            this->ViewportWidth     = static_cast<int>(this->EngineViewportSize.x);
-            this->ViewportHeight    = static_cast<int>(this->EngineViewportSize.y);
+            // @EDIT - This would only be called when the frame size would be updated. Uses the captured viewport size from each frame compared to the one we have right now.
+            // There seems to be slight delay with the rescaling of the framebuffer and the movement of the window and this is the culprit. 
+            // We could move this eariler or do this every frame but thats very inefficent.
+
+            this->ViewportWidth         = this->EngineViewportSize.x;
+            this->ViewportHeight        = this->EngineViewportSize.y;
 
             this->NewSessionManager.GetComponents().EngineCamera.UpdateCameraResolution(this->ViewportWidth, this->ViewportHeight);
             this->NewSessionManager.SetViewportResolution(ImVec2(this->ViewportWidth, this->ViewportHeight));
@@ -241,6 +207,9 @@ void EditorMain::RenderEngine(void)
             glViewport(0, 0, this->ViewportWidth, this->ViewportHeight);
         }
 
+        
+        // @TODO - Perhaps make this more efficent by not fetching per frame? Maybe a timer system with set intervals or something.
+        this->EngineViewportSize = this->NewSessionManager.GetEditorToolbar().ReturnRegionContentAvail();
         this->NewSessionManager.BindFrameBuffer();
 
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -253,8 +222,6 @@ void EditorMain::RenderEngine(void)
         this->SelectObjectFromWorld(this->NewSessionManager.GetEditorToolbar().ReturnPositionViewport());
 
         this->NewSessionManager.UnbindFrameBuffer();
-
-        this->EngineViewportSize = this->NewSessionManager.GetEditorToolbar().ReturnRegionContentAvail();
         this->NewSessionManager.GetEditorToolbar().DrawComponentWindow(this->NewSessionManager.ReturnEngineWindow(), &this->NewSessionManager.GetComponents().EngineCamera, &this->NewSessionManager.GetShaders().DebugShader,this->NewSessionManager.GetFrameBuffer().TextureIdentifer);
 
         glfwSwapBuffers(this->NewSessionManager.ReturnEngineWindow());
