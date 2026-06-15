@@ -16,6 +16,7 @@
 #include "../EditorWorkspace.h"
 #include "../../../Resources/imgui/ImGuizmo.h"
 
+#include "GridEditor/GridEditorWindow.h"
 #include "PropertiesWindow.h"
 #include "CodeEditor.h"
 
@@ -104,6 +105,7 @@ class ComponentsWindowRenderHandler
 		InterfaceTooltipValues					CurrentToolValue;
 		InterfaceValues							CurrentInterfaceValue;
 		InterfaceStatusValues					CurrentStatus;
+		GridEditor								CurrentGridEditor;
 
 	private:
 

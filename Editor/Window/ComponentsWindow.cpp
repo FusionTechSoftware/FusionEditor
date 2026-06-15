@@ -273,6 +273,7 @@ void ComponentsWindowRenderHandler::SpawnCubeInstance(Camera* EngineCamera,Shade
 	NewObject.ObjectDataType = DATATYPE_BLOCK; // Used to determine the type of object we are seeing.
 
 	this->ObjectProperties.push_back(NewObject);
+	this->CurrentGridEditor.SubmitWorldGeometry(EditorUtilites::GroupVector3(CubeVertices), CubeIndices);
 	this->NewWorkspace.CreateGeometryData(EngineShader, CubeVertices, CubeIndices, Translation, Rotation, Scale, "", SHAPE_BLOCK, -1);
 }
 
@@ -824,6 +825,8 @@ void ComponentsWindowRenderHandler::DrawComponentWindow(GLFWwindow* EngineWindow
 	this->DrawMainToolbar(EngineCamera, EngineShader);
 	this->DrawDropdownMenu(this->ObjectProperties);
 	this->NewWorkspace.SetSelectedIndex(this->SelectedIndex);
+
+	if (Console::GridViewEnable) { this->CurrentGridEditor.DrawGrids(); }
 
 	this->FeedbackMenuSystem();
 	this->NewTextEditor.DrawCodeEditor({"","CoolText.fs"});

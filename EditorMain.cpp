@@ -17,6 +17,7 @@ void MouseViewCallback(GLFWwindow* EngineWindow, int Button, int Action, int Mod
 
 void EditorMain::SpecialKeyFunction(void)
 {
+    //Key functions to edit geometry data.
     if (glfwGetKey(this->NewSessionManager.ReturnEngineWindow(), GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
     {
         if (this->NewSessionManager.GetEditorToolbar().SelectedIndex == -1) { return; }
@@ -136,20 +137,22 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
     if (CurrentMousePosition.x > ViewportContentRegion.x || CurrentMousePosition.y > ViewportContentRegion.y)   { return; }
     if (CurrentMousePosition.x < ViewportContentCorner.x || CurrentMousePosition.y < ViewportContentCorner.y)   { return; } // Do the same for the region the first statement cannot touch.
 
+    //Transfer viewport (ImGui) coordinates into Normalised Device Coordinates (NDC)
     float MouseX = (2.0f * (CurrentMousePosition.x - ViewportItemRectMin.x)) / ViewportItemRectSize.x - 1.0f;
     float MouseY = 1.0f - (2.0f * (CurrentMousePosition.y - ViewportItemRectMin.y)) / ViewportItemRectSize.y;
 
     this->RayOrigin     = NewCamera.ReturnCameraPosition();
-    //this->RayDirection  = glm::normalize(
-    //    EditorUtilites::GetRayFromMouse(
-    //        NewCamera.ReturnProjectionMatrix(),
-    //        NewCamera.ReturnViewMatrix(),
-    //        MouseX, MouseY,
-    //        this->ViewportWidth,
-    //        this->ViewportHeight
-    //    )
-    //);
+    this->RayDirection  = glm::normalize(
+        EditorUtilites::GetRayFromMouse(
+            NewCamera.ReturnProjectionMatrix(),
+            NewCamera.ReturnViewMatrix(),
+            MouseX, MouseY,
+            this->ViewportWidth,
+            this->ViewportHeight
+        )
+    );
 
+    // @TODO - Remove when done!
     std::cout << "Origin: " << this->RayOrigin.x << "," << this->RayOrigin.y << "," << this->RayOrigin.z << "\n";
     std::cout << "Direction: " << this->RayDirection.x << "," << this->RayDirection.y << "," << this->RayDirection.z << "\n";
  
@@ -160,22 +163,25 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
     {
         std::cout << "Position Index " << Index << ": " << this->CurrentGeometryData[Index].Translation.x << "," << this->CurrentGeometryData[Index].Translation.y << "," << this->CurrentGeometryData[Index].Translation.z << "\n";
 
-        this->RayDirection = glm::normalize(this->CurrentGeometryData[Index].Translation - NewCamera.ReturnCameraPosition());
-
         float T;
         GeometryData& CurrentObject = this->CurrentGeometryData[Index];
-        glm::mat4 ModelMatrix = CurrentObject.TranslationMatrix * CurrentObject.RotationMatrix * CurrentObject.ScaleMatrix;
-        glm::mat4 InverseModel = glm::inverse(ModelMatrix);
+        glm::mat4 ModelMatrix       = CurrentObject.TranslationMatrix * CurrentObject.RotationMatrix * CurrentObject.ScaleMatrix;
+        glm::mat4 InverseModel      = glm::inverse(ModelMatrix);
 
-        glm::vec3 LocalOrigin = glm::vec3(InverseModel * glm::vec4(this->RayOrigin, 1.0f));
-        glm::vec3 LocalDirection = glm::normalize(glm::vec3(InverseModel * glm::vec4(this->RayDirection, 0.0f)));
+        glm::vec3 LocalOrigin       = glm::vec3(InverseModel * glm::vec4(this->RayOrigin, 1.0f));
+        glm::vec3 LocalDirection    = glm::normalize(glm::vec3(InverseModel * glm::vec4(this->RayDirection, 0.0f)));
+        glm::vec3 LocalBoundingMin  = glm::vec3(ModelMatrix * glm::vec4(CurrentObject.GeometryBoundingBox.MinimumBounds, 1.0f));
+        glm::vec3 LocalBoundingMax  = glm::vec3(ModelMatrix * glm::vec4(CurrentObject.GeometryBoundingBox.MaximumBounds, 1.0f)); // We could change the bounds from normalised space into screen space?
 
-        if (EditorUtilites::DoesRayIntersectBounds(LocalOrigin, LocalDirection, CurrentObject.GeometryBoundingBox.MinimumBounds, CurrentObject.GeometryBoundingBox.MaximumBounds, T))
+        std::cout << LocalBoundingMin.x << LocalBoundingMin.y << LocalBoundingMin.z << "\n";
+        std::cout << LocalBoundingMax.x << LocalBoundingMax.y << LocalBoundingMax.z << "\n";
+
+        if (EditorUtilites::DoesRayIntersectBounds(LocalOrigin, LocalDirection, LocalBoundingMin, LocalBoundingMax, T))
         {
             if (T < ClosestValue)
             {
-                ClosestValue = T;
-                Selected = Index;
+                ClosestValue    = T;
+                Selected        = Index;
 
                 glm::vec3 LocalHit = LocalOrigin + LocalDirection * T;
                 glm::vec3 WorldHit = glm::vec3(ModelMatrix * glm::vec4(LocalHit, 1.0f));

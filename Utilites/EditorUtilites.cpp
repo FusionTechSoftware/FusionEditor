@@ -218,43 +218,43 @@ glm::vec3 EditorUtilites::GetTriangleNormalFromWorldPosition(const glm::vec3& Ve
 	return glm::normalize(glm::cross(Vertex1 - Vertex0, Vertex2 - Vertex0));
 }
 
-//glm::vec3 EditorUtilites::GetRayFromMouse(const glm::mat4& Projection, const glm::mat4& View, double MouseX, double MouseY, int Width, int Height)
-//{
-//	float X = (1.0f * MouseX) / Width - 1.0f;
-//	float Y = 1.0f - (2.0f * MouseY) / Height;
-//
-//	glm::vec4 NearNDC	= glm::vec4(X, Y, -1.0f, 1.0f);
-//	glm::vec4 FarNDC	= glm::vec4(X, Y, 1.0f, 1.0f);
-//	glm::mat4 InverseVP = glm::inverse(Projection * View);
-//
-//	glm::vec4 NearWorld = InverseVP * NearNDC; NearWorld /= NearWorld.w;
-//	glm::vec4 FarWorld	= InverseVP * FarNDC;  FarWorld /= FarWorld.w;
-//
-//	glm::vec3 Origin	= glm::vec3(NearWorld);
-//	glm::vec3 Direction = glm::normalize(glm::vec3(FarWorld - NearWorld));
-//
-//	return Direction;
-//}
-
-//glm::vec3 EditorUtilites::GetRayFromMouse(const glm::mat4& Projection, const glm::mat4& View, double MouseX, double MouseY, int Width, int Height)
-glm::vec3 EditorUtilites::GetRayFromMouse(
-	const glm::mat4& projection,
-	const glm::mat4& view,
-	double mouseX,
-	double mouseY,
-	int width,
-	int height)
+glm::vec3 EditorUtilites::GetRayFromMouse(const glm::mat4& Projection, const glm::mat4& View, double MouseX, double MouseY, int Width, int Height)
 {
-	float x = (2.0f * mouseX) / width - 1.0f;
-	float y = 1.0f - (2.0f * mouseY) / height;
+	//float X = (1.0f * MouseX) / Width - 1.0f;
+	//float Y = 1.0f - (2.0f * MouseY) / Height;
 
-	glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
+	glm::vec4 NearNDC	= glm::vec4(MouseX, MouseY, -1.0f, 1.0f);
+	glm::vec4 FarNDC	= glm::vec4(MouseX, MouseY, 1.0f, 1.0f);
+	glm::mat4 InverseVP = glm::inverse(Projection * View);
 
-	glm::vec4 rayEye = glm::inverse(projection) * rayClip;
-	rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+	glm::vec4 NearWorld = InverseVP * NearNDC; NearWorld /= NearWorld.w;
+	glm::vec4 FarWorld	= InverseVP * FarNDC;  FarWorld /= FarWorld.w;
 
-	glm::vec3 rayWorld =
-		glm::normalize(glm::vec3(glm::inverse(view) * rayEye));
+	glm::vec3 Origin	= glm::vec3(NearWorld);
+	glm::vec3 Direction = glm::normalize(glm::vec3(FarWorld - NearWorld));
 
-	return rayWorld;
+	return Direction;
 }
+
+
+//glm::vec3 EditorUtilites::GetRayFromMouse(
+//	const glm::mat4& projection,
+//	const glm::mat4& view,
+//	double mouseX,
+//	double mouseY,
+//	int width,
+//	int height)
+//{
+//	float x = (2.0f * mouseX) / width - 1.0f;
+//	float y = 1.0f - (2.0f * mouseY) / height;
+//
+//	glm::vec4 rayClip = glm::vec4(x, y, -1.0f, 1.0f);
+//
+//	glm::vec4 rayEye = glm::inverse(projection) * rayClip;
+//	rayEye = glm::vec4(rayEye.x, rayEye.y, -1.0f, 0.0f);
+//
+//	glm::vec3 rayWorld =
+//		glm::normalize(glm::vec3(glm::inverse(view) * rayEye));
+//
+//	return rayWorld;
+//}
