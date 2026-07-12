@@ -35,8 +35,6 @@ struct SyntaxHighlightLayout
 class EditorUtilites
 {
 	public:
-											EditorUtilites(void);
-
 		static bool							DoesRayIntersectTriangle(const glm::vec3& RayOrigin, const glm::vec3& RayDirection, const glm::vec3& TrianglePointA, const glm::vec3& TrianglePointB, const glm::vec3& TrianglePointC, float& Triangle);
 		static bool							DoesRayIntersectBounds(const glm::vec3& RayOrigin, const glm::vec3& RayDirection, const glm::vec3& BoxMinimum, const glm::vec3& BoxMaximum, float& T);
 		static int							PickVertexFromMesh(const std::vector<VertexPoint>& Vertices, const glm::vec2& MousePosition, const glm::mat4& View, const glm::mat4& Projection, const glm::mat4& Model, int Width, int Height);

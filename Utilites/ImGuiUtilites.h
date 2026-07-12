@@ -12,7 +12,6 @@ struct GradientBlock
 class ImGuiUtilites
 {
 	public:
-						ImGuiUtilites(void);
 		static void		GradientRect(ImVec2 Minimum, ImVec2 Maximum, GradientBlock CurrentGradient);
 		static bool		ButtonGradient(const char* Label, ImVec2 Size, ImVec4 BorderColour, GradientBlock HoveredGradient, GradientBlock ActiveGradient, GradientBlock CurrentGradient);
 		static void		BeginGradient(const char* Name, GradientBlock CurrentGradient, bool* Open = (bool*)0, ImGuiWindowFlags Flags = 0);

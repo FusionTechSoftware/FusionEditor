@@ -1,7 +1,5 @@
 #include "ImGuiUtilites.h"
 
-ImGuiUtilites::ImGuiUtilites(void) {}
-
 bool ImGuiUtilites::ButtonGradient(const char* Label, ImVec2 Size,ImVec4 BorderColour, GradientBlock HoveredGradient, GradientBlock ActiveGradient, GradientBlock CurrentGradient)
 {
     ImU32 Top, Bottom;

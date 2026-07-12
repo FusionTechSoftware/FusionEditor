@@ -1,7 +1,5 @@
 #include "EditorUtilites.h"
 
-EditorUtilites::EditorUtilites(void) {}
-
 bool EditorUtilites::DoesRayIntersectTriangle(const glm::vec3& RayOrigin, const glm::vec3& RayDirection, const glm::vec3& TrianglePointA, const glm::vec3& TrianglePointB, const glm::vec3& TrianglePointC, float& Triangle)
 {
 	const float Epsilon = 0.0000001f;
@@ -220,20 +218,36 @@ glm::vec3 EditorUtilites::GetTriangleNormalFromWorldPosition(const glm::vec3& Ve
 
 glm::vec3 EditorUtilites::GetRayFromMouse(const glm::mat4& Projection, const glm::mat4& View, double MouseX, double MouseY, int Width, int Height)
 {
-	//float X = (1.0f * MouseX) / Width - 1.0f;
-	//float Y = 1.0f - (2.0f * MouseY) / Height;
+#if 1
+	float X = (1.0f * MouseX) / Width - 1.0f;
+	float Y = 1.0f - (2.0f * MouseY) / Height;
 
-	glm::vec4 NearNDC	= glm::vec4(MouseX, MouseY, -1.0f, 1.0f);
-	glm::vec4 FarNDC	= glm::vec4(MouseX, MouseY, 1.0f, 1.0f);
+	glm::vec4 NearNDC = glm::vec4(MouseX, MouseY, -1.0f, 1.0f);
+	glm::vec4 FarNDC = glm::vec4(MouseX, MouseY, 1.0f, 1.0f);
 	glm::mat4 InverseVP = glm::inverse(Projection * View);
 
 	glm::vec4 NearWorld = InverseVP * NearNDC; NearWorld /= NearWorld.w;
-	glm::vec4 FarWorld	= InverseVP * FarNDC;  FarWorld /= FarWorld.w;
+	glm::vec4 FarWorld = InverseVP * FarNDC;  FarWorld /= FarWorld.w;
 
-	glm::vec3 Origin	= glm::vec3(NearWorld);
+	glm::vec3 Origin = glm::vec3(NearWorld);
 	glm::vec3 Direction = glm::normalize(glm::vec3(FarWorld - NearWorld));
 
 	return Direction;
+#else
+
+	float X = (2.0f * MouseX) / Width - 1.0f;
+	float Y = 1.0f - (2.0f * MouseY) / Height;
+
+	glm::vec4 RaycastClip = glm::vec4(X, Y, -1.0f, 1.0f);
+	glm::vec4 RayEye = glm::inverse(Projection) * RaycastClip;
+
+	RayEye = glm::vec4(RayEye.x, RayEye.y, -1.0f, 0.0f);
+	
+	glm::vec3 RayWorld = glm::normalize(glm::vec3(glm::inverse(View) * RayEye));
+
+	return RayWorld;
+#endif
+
 }
 
 

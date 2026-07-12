@@ -18,6 +18,7 @@ class EditorMain
         void                        SpecialKeyFunction(void);
     private:
         void                        SelectObjectFromWorld(ImVec2 ViewportCursorPosition);
+        void                        DebugSelectionLine(void);
         int                         ViewportWidth;
         int                         ViewportHeight;
         double                      LastNormalTrigger;

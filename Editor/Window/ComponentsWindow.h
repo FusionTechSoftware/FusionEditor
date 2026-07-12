@@ -13,6 +13,7 @@
 #include "../../../Resources/IconsFontAwesome5.h"
 #include "../../Rendering/Camera.h"
 #include "../../Utilites/ImGuiUtilites.h"
+#include "../../Utilites/ImageUtilities.h"
 #include "../EditorWorkspace.h"
 #include "../../../Resources/imgui/ImGuizmo.h"
 
@@ -53,9 +54,16 @@ struct InterfaceValues
 	unsigned int	LogoImageID;
 };
 
+
 struct InterfaceSearchGroup
 {
 	std::string SearchInputText;
+};
+
+struct ExplorerTreeView
+{
+	int ParentIndex;
+	int ChildIndex;
 };
 
 struct InterfaceAdditionMenu
@@ -81,6 +89,7 @@ class ComponentsWindowRenderHandler
 		void									LoadComponentWindow(void);
 		void									LoadIconFonts(void);
 		void									ApplyLocalTheme(void);
+		void									RecursiveObjectDraw(ImGuiTreeNodeFlags CurrentFlags, std::vector<ExplorerTreeView>& TreeDropdownContent, int LayoutIndex, int ParentIndex, int ChildIndex);
 		void									ShowEditGizmo(Camera* EngineCamera, int ViewportWidth, int ViewportHeight);
 		void									DrawComponentWindow(GLFWwindow* EngineWindow, Camera* EngineCamera, Shader* EngineShader, unsigned int FrameBuffer);
 		void									DrawTextureViewer(void);
@@ -88,7 +97,8 @@ class ComponentsWindowRenderHandler
 		void									DrawRenderSceneWindow(GLFWwindow* EngineWindow, Camera* EngineCamera, InterfaceRenderModule CurrentModule);
 		void									DrawMainToolbar(Camera* EngineCamera, Shader* EngineShader);
 		void									DrawAddComponentsMenu(void);
-		void									DrawDropdownMenu(const std::vector< ModelObjectProperties>& DropdownContents);
+		void									DrawDropdownMenuRecurse(std::vector<ExplorerTreeView>& DropdownContents);
+		void									DrawDropdownMenu(std::vector<ModelObjectProperties>& DropdownContents);
 		void									DrawSettings(InterfaceValues CurrentValues);
 		void									DrawToolbarWidget(InterfaceValues& CurrentValues, GLFWwindow* EngineWindow, const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& Position);
 		void									Destroy(int Index);
@@ -118,6 +128,7 @@ class ComponentsWindowRenderHandler
 		void									ModeButton(const char* Icon, InterfaceTooltipValues Mode, const ImVec4& ActiveColor);
 		void									FeedbackMenuSystem(void);
 
+		int										CreationIndex;
 		int										InstanceIndex;
 		bool									FeedbackToggle;
 		ImVec2									ViewportSafeSpace;
@@ -138,6 +149,7 @@ class ComponentsWindowRenderHandler
 		std::vector<std::string>				WidgetTabs				= { "Geometry","Model","Debug","Audio" };
 		std::vector<InterfaceAdditionMenu>		AdditionComponentMenu	= { InterfaceAdditionMenu("Add Mesh",ICON_FA_CUBE), InterfaceAdditionMenu("Add Cube",ICON_FA_CUBE), InterfaceAdditionMenu("Add Lights",ICON_FA_LIGHTBULB), InterfaceAdditionMenu("Add Player",ICON_FA_MAGIC) };
 		std::vector<ModelObjectProperties>		ObjectProperties;
+		std::vector<ExplorerTreeView>			TreePropertiesView;
 
 		glm::vec3								ObjectScale;
 		glm::vec3								ObjectTranslation;

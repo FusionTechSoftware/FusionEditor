@@ -142,15 +142,7 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
     float MouseY = 1.0f - (2.0f * (CurrentMousePosition.y - ViewportItemRectMin.y)) / ViewportItemRectSize.y;
 
     this->RayOrigin     = NewCamera.ReturnCameraPosition();
-    this->RayDirection  = glm::normalize(
-        EditorUtilites::GetRayFromMouse(
-            NewCamera.ReturnProjectionMatrix(),
-            NewCamera.ReturnViewMatrix(),
-            MouseX, MouseY,
-            this->ViewportWidth,
-            this->ViewportHeight
-        )
-    );
+    this->RayDirection  = NewCamera.Orientation;
 
     // @TODO - Remove when done!
     std::cout << "Origin: " << this->RayOrigin.x << "," << this->RayOrigin.y << "," << this->RayOrigin.z << "\n";
@@ -194,6 +186,30 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
     this->NewSessionManager.GetEditorToolbar().SelectedIndex = Selected;
 }
 
+void EditorMain::DebugSelectionLine(void)
+{
+    // This would use the immediate mode of OpenGL rather than the retained mode. This is for easier debugging, since
+    // I dont need to submit to the renderer (VAO,VBO ect.) 
+    glUseProgram(0);
+    //Show to projection mode, we use projection matrix from the camera.
+    glMatrixMode(GL_PROJECTION);
+    glLoadMatrixf(glm::value_ptr(this->NewSessionManager.GetComponents().EngineCamera.ReturnProjectionMatrix()));
+
+    //Submit model matrix
+    glMatrixMode(GL_MODELVIEW);
+    glLoadMatrixf(glm::value_ptr(this->NewSessionManager.GetComponents().EngineCamera.ReturnViewMatrix()));
+
+    //Just draw using lines. This is the ray direction.
+    glBegin(GL_LINES);
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex3f(RayOrigin.x, RayOrigin.y, RayOrigin.z);
+    glVertex3f(
+        RayOrigin.x + RayDirection.x * 100,
+        RayOrigin.y + RayDirection.y * 100,
+        RayOrigin.z + RayDirection.z * 100);
+    glEnd();
+}
+
 void EditorMain::RenderEngine(void)
 {
     while (!glfwWindowShouldClose(this->NewSessionManager.ReturnEngineWindow()))
@@ -212,7 +228,6 @@ void EditorMain::RenderEngine(void)
             this->NewSessionManager.RescaleFrameBuffer(this->ViewportWidth, this->ViewportHeight);
             glViewport(0, 0, this->ViewportWidth, this->ViewportHeight);
         }
-
         
         // @TODO - Perhaps make this more efficent by not fetching per frame? Maybe a timer system with set intervals or something.
         this->EngineViewportSize = this->NewSessionManager.GetEditorToolbar().ReturnRegionContentAvail();
@@ -226,6 +241,8 @@ void EditorMain::RenderEngine(void)
 
         this->SpecialKeyFunction();
         this->SelectObjectFromWorld(this->NewSessionManager.GetEditorToolbar().ReturnPositionViewport());
+
+        this->DebugSelectionLine();
 
         this->NewSessionManager.UnbindFrameBuffer();
         this->NewSessionManager.GetEditorToolbar().DrawComponentWindow(this->NewSessionManager.ReturnEngineWindow(), &this->NewSessionManager.GetComponents().EngineCamera, &this->NewSessionManager.GetShaders().DebugShader,this->NewSessionManager.GetFrameBuffer().TextureIdentifer);

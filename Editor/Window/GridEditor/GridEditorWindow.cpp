@@ -1,10 +1,13 @@
 #include "GridEditorWindow.h"
 #include "../../../Common/Console.h"
 
+#include <iostream>
+
 GridEditor::GridEditor(void) 
 {
-	this->FloorHeight = 128.0f;
-	this->GridSectors = {};
+	this->LastPressedKey	= 0.0;
+	this->FloorHeight		= 128.0f;
+	this->GridSectors		= {};
 };
 
 glm::vec3 GridEditor::GridToWorldSpace(const ImVec2& Point, ViewMode CurrentViewMode)
@@ -111,7 +114,7 @@ void GridEditor::GenerateGeometry(const ImVector<ImVec2>& Points, ViewMode Curre
 	this->GridSectors.push_back(CurrentSector);
 } 
 
-void GridEditor::DrawGrids(void)
+void GridEditor::DrawGrids(GLFWwindow* EngineWindow)
 {
 	// @TODO - Could add a system to scroll forward and backwards to adjust the scale of the points.
 
@@ -153,37 +156,67 @@ void GridEditor::DrawGrids(void)
 
 	const bool WindowHovered	= ImGui::IsItemHovered();
 	const bool WindowActive		= ImGui::IsItemActive();
+	static bool VertexActive	= false;
 
 	ImVec2 Origin				= CanvasPosition + Scrolling;
 	ImVec2 MouseRawPosition		= CurrentIO.MousePos - Origin;
 	ImVec2 Mouse2D				= MouseGridSnap(MouseRawPosition);
 	glm::vec3 Mouse3D			= this->GridToWorldSpace(Mouse2D, CurrentViewMode);
+
+	if (glfwGetKey(EngineWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS && glfwGetTime() - this->LastPressedKey > 1.0f) // We would use a debounce key here. Check if the input is less than 1 seconds or so.
+	{
+		// @TODO - This seems safe for now but in the future we shouldnt assume that the user didnt press this after creating the new object!
+		Point3D.clear();
+		this->LastPressedKey = glfwGetTime(); // Update the press time.
+	}
 	
 	if (WindowHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
 	{
-		if (Point3D.empty()) { Point3D.push_back(Mouse3D); }
-		else
+		// @TODO - Perhaps make this more efficent, maybe dont use a loop every time we click/limit the usage.
+		for (const GridFaceSector& CurrentSector : this->GridSectors)
 		{
-			glm::vec3 First = Point3D[0];
-			float DX = Mouse3D.x - First.x;
-			float DY = Mouse3D.y - First.y;
-			float DZ = Mouse3D.z - First.z;
-			float Distance = sqrtf(DX * DX + DY * DY + DZ * DZ);
-
-			if (Distance < CLOSE_DISTANCE)
+			for (size_t Index = 0; Index < CurrentSector.Indices.size(); Index++)
 			{
-				ImVector<ImVec2> Point2D;
-
-				for (auto& Points : Point3D)
+				if (Mouse3D == CurrentSector.Vertices[CurrentSector.Indices[Index]]) // Just check if this is a selectable vertex we can access.
 				{
-					Point2D.push_back(this->WorldToGridSpace(Points, CurrentViewMode));
+					// We can send the address of the boolean to change within a parameter
+					// to hence edit the condition that would be given.
+					VertexActive = true;
+					std::cout << "Pressed within the space" << "\n";
 				}
-				this->GenerateGeometry(Point2D, CurrentViewMode);
-				Point3D.clear();
 			}
+		}
+
+
+
+		if (!VertexActive)
+		{
+			if (Point3D.empty()) { Point3D.push_back(Mouse3D); }
 			else
 			{
-				Point3D.push_back(Mouse3D);
+				glm::vec3 First = Point3D[0];
+				float DX = Mouse3D.x - First.x;
+				float DY = Mouse3D.y - First.y;
+				float DZ = Mouse3D.z - First.z;
+				float Distance = sqrtf(DX * DX + DY * DY + DZ * DZ);
+
+				// @TODO - Create a cleaner triangle with the vertex being provided (too messy!)
+
+				if (Distance < CLOSE_DISTANCE)
+				{
+					ImVector<ImVec2> Point2D;
+
+					for (auto& Points : Point3D)
+					{
+						Point2D.push_back(this->WorldToGridSpace(Points, CurrentViewMode));
+					}
+					this->GenerateGeometry(Point2D, CurrentViewMode);
+					Point3D.clear();
+				}
+				else
+				{
+					Point3D.push_back(Mouse3D);
+				}
 			}
 		}
 	}
@@ -215,7 +248,7 @@ void GridEditor::DrawGrids(void)
 		Point1 = this->WorldToGridSpace(Point3D[Index + 1], CurrentViewMode);
 
 		// Draw the actual polygon that would be used to render
-		CurrentDrawList->AddLine(Origin + Point0, Origin + Point1, IM_COL32(150, 255, 150, 255), 2.0f);
+		CurrentDrawList->AddLine(Origin + Point0, Origin + Point1, IM_COL32(255, 159, 56, 255), 2.0f);
 	}
 
 	if (!Point3D.empty())
@@ -224,7 +257,7 @@ void GridEditor::DrawGrids(void)
 
 		// Draw the actual line.
 		Point0 = this->WorldToGridSpace(Point3D.back(),CurrentViewMode);
-		CurrentDrawList->AddLine(Origin + Point0, Origin + Mouse2D, IM_COL32(252, 132, 3, 255), 2.0f);
+		CurrentDrawList->AddLine(Origin + Point0, Origin + Mouse2D, IM_COL32(255, 159, 56, 255), 2.0f);
 	}
 
 	for (auto& CurrentPoint : Point3D)
@@ -276,6 +309,17 @@ void GridEditor::DrawGrids(void)
 
 				CurrentDrawList->AddLine(Origin + Point0, Origin + Point1, IM_COL32(255, 255, 255, 255), 2.0f);
 			}
+		}
+
+		for (size_t Index = 0; Index < CurrentSector.Indices.size(); Index++)
+		{
+			// We would draw the vertex from each of the vertices from the geometry we would have created. This should change
+			// for each axis we switch from
+
+			// @TODO - Make the vertex editable and dragable when being clicked on.
+
+			ImVec2 CurrentPoint = this->WorldToGridSpace(CurrentSector.Vertices[CurrentSector.Indices[Index]], CurrentViewMode);
+			CurrentDrawList->AddCircleFilled(Origin + CurrentPoint, 5, IM_COL32(60, 255, 60, 255)); // We would need to add towards the origin (camera point)
 		}
 
 	}

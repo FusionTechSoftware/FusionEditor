@@ -41,7 +41,7 @@ void SessionManager::CreateSession(void)
     glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,GL_VERSION_MAJOR);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,GL_VERSION_MINOR);
-    glfwWindowHint(GLFW_OPENGL_PROFILE,GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
     glfwWindowHint(GLFW_SAMPLES,GL_MSAA_SAMPLES);
     
     this->Width         = std::get<float>(Commands::GetFromRegister("width"));

@@ -10,6 +10,10 @@ ComponentsWindowRenderHandler::ComponentsWindowRenderHandler(void)
 	this->CurrentInterfaceValue.IsSettingsMenuOpen	= false;
 	this->CurrentInterfaceValue.IsTextureMenuOpen	= false;
 	this->CurrentInterfaceValue.LogoImageID			= 0;
+	
+	this->CreationIndex			= 0;
+	this->TreePropertiesView	= {};
+	this->ObjectProperties		= {};
 
 	this->CurrentStatus		= STATUS_READY;
 	this->CurrentToolValue	= VALUE_POINTER;
@@ -125,6 +129,8 @@ void ComponentsWindowRenderHandler::LoadIconFonts(void)
 
 	NewIO.Fonts->AddFontFromFileTTF("../Fusion/Fonts/fa-regular-400.ttf", IconFontSize, &NewFontConfig, IconRange);
 	NewIO.Fonts->AddFontFromFileTTF("../Fusion/Fonts/fa-solid-900.ttf", IconFontSize, &NewFontConfig, IconRange);
+
+	this->CurrentInterfaceValue.LogoImageID = ImageUtility::LoadTextureIntoMemory(ImageUtility::ReadImageBuffer("../Fusion/Images/Logo.imgbuf"));
 }
 
 void ComponentsWindowRenderHandler::LoadComponentWindow(void)
@@ -254,9 +260,11 @@ void ComponentsWindowRenderHandler::SpawnCubeInstance(Camera* EngineCamera,Shade
 	// Moved the creation instance to a seperate function for multiple instance creations within seperate windows
 	// reduces redundancy.
 	ModelObjectProperties NewObject;
+	ExplorerTreeView NewTreeView;
 
+	// + glm::normalize(EngineCamera->Orientation) * SpawnDistance;
 	float SpawnDistance		= 50.0f;
-	glm::vec3 Translation	= EngineCamera->ReturnCameraPosition() + glm::normalize(EngineCamera->Orientation) * SpawnDistance;
+	glm::vec3 Translation	= EngineCamera->ReturnCameraPosition();
 	glm::quat Rotation		= glm::quat(0.0f, 0.0f, 0.0f, 1.0f);
 	glm::vec3 Scale			= glm::vec3(10.0f, 10.0f, 10.0f);
 
@@ -272,9 +280,16 @@ void ComponentsWindowRenderHandler::SpawnCubeInstance(Camera* EngineCamera,Shade
 	
 	NewObject.ObjectDataType = DATATYPE_BLOCK; // Used to determine the type of object we are seeing.
 
+	NewTreeView.ParentIndex = this->CreationIndex;
+	NewTreeView.ChildIndex	= -1; //So far we can create within the child index node as null.
+
+
 	this->ObjectProperties.push_back(NewObject);
+	this->TreePropertiesView.push_back(NewTreeView);
 	this->CurrentGridEditor.SubmitWorldGeometry(EditorUtilites::GroupVector3(CubeVertices), CubeIndices);
 	this->NewWorkspace.CreateGeometryData(EngineShader, CubeVertices, CubeIndices, Translation, Rotation, Scale, "", SHAPE_BLOCK, -1);
+
+	this->CreationIndex++;
 }
 
 void ComponentsWindowRenderHandler::ModeButton(const char* Icon, InterfaceTooltipValues Mode, const ImVec4& ActiveColor)
@@ -718,8 +733,75 @@ void ComponentsWindowRenderHandler::DrawSettings(InterfaceValues CurrentValues)
 	}
 }
 
-void ComponentsWindowRenderHandler::DrawDropdownMenu(const std::vector<ModelObjectProperties>& DropdownContents)
+void ComponentsWindowRenderHandler::RecursiveObjectDraw(ImGuiTreeNodeFlags CurrentFlags,std::vector<ExplorerTreeView>& TreeDropdownContent,int LayoutIndex,int ParentIndex,int ChildIndex)
 {
+	// This would be a horrible no good recursive system that would take up memory
+	// @TODO: Perhaps make a cutoff amount of recursion to not infinitly recurse.
+
+	// This might not be used. Might be useless. Just display all objects/blocks that are found within the world. Even better we can create sections that are found similar to Visual studio
+	
+	const bool IsSelectable = this->ObjectProperties[ParentIndex].ObjectDataType != DATATYPE_ENVIROMENT_NOINTERACT;
+
+	ImGui::PushID(LayoutIndex);
+	ImGui::TableNextRow();
+	ImGui::TableSetColumnIndex(0);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 4.0f));
+
+	if (IsSelectable)	{ ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.65f, 0.35f, 1.00f)); }
+	else				{ ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.22f, 0.16f, 1.00f)); }
+
+	if (ImGui::TreeNode(this->ObjectProperties[ParentIndex].LabelPrefix.c_str()))
+	{
+		if	(this->ObjectProperties[ParentIndex].LabelName == "Skybox")			{}
+		else if (this->ObjectProperties[ParentIndex].LabelName == "Sun")		{}
+		else if (this->ObjectProperties[ParentIndex].LabelName == "Camera")		{}
+		else {}
+
+		if (ChildIndex != -1)
+		{
+			this->RecursiveObjectDraw(CurrentFlags, TreeDropdownContent, LayoutIndex, ParentIndex,ChildIndex);
+		}
+
+		ImGui::TreePop();
+	}
+
+	ImGui::PopStyleColor();
+	ImGui::PopStyleVar(2);
+	ImGui::TableSetColumnIndex(1);
+
+	if (this->ObjectProperties[TreeDropdownContent[LayoutIndex].ParentIndex].Selected) { CurrentFlags |= ImGuiTreeNodeFlags_Selected; }
+
+	ImGui::InputText(("##TextInputSystem"+std::to_string(LayoutIndex)).c_str(), &this->ObjectProperties[TreeDropdownContent[LayoutIndex].ParentIndex].LabelName);
+	ImGui::PopID();
+}
+
+void ComponentsWindowRenderHandler::DrawDropdownMenuRecurse(std::vector<ExplorerTreeView>& DropdownContents)
+{
+	//This would be seperate version in which would draw the dropdown menu using recursion.
+
+	ImGui::Begin("World Explorer");
+	ImGuiTreeNodeFlags CurrentFlags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+
+	if (ImGui::BeginTable("EnviromentHirachy", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
+	{
+		ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+
+		for (int Index = 0; Index < DropdownContents.size(); Index++)
+		{
+			this->RecursiveObjectDraw(CurrentFlags, DropdownContents, Index, DropdownContents[Index].ParentIndex, DropdownContents[Index].ChildIndex);
+		}
+		ImGui::EndTable();
+	}
+	ImGui::Separator();
+	ImGui::End();
+}
+
+void ComponentsWindowRenderHandler::DrawDropdownMenu(std::vector<ModelObjectProperties>& DropdownContents)
+{
+	ImGui::Begin("World Explorer");
 	ImGuiTreeNodeFlags CurrentFlags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
 
 	if (ImGui::BeginTable("EnviromentHirachy", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
@@ -730,23 +812,25 @@ void ComponentsWindowRenderHandler::DrawDropdownMenu(const std::vector<ModelObje
 		for (int Index = 0; Index < DropdownContents.size(); Index++)
 		{
 			const bool IsSelectable = DropdownContents[Index].ObjectDataType != DATATYPE_ENVIROMENT_NOINTERACT;
-			
+
 			ImGui::PushID(Index);
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
 
 			ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f,2.0f));
+			ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 4.0f));
 
-			if (IsSelectable)	{ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.65f, 0.35f, 1.00f));}
-			else				{ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.22f, 0.16f, 1.00f));}
+			if (IsSelectable && this->SelectedIndex == Index)	{ ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.65f, 0.35f, 1.00f)); }
+			else												{ ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.22f, 0.16f, 1.00f)); }
 
-			if (ImGui::Button(DropdownContents[Index].LabelPrefix.c_str(), ImVec2(-FLT_MIN, 0)))
+			if (ImGui::Button(DropdownContents[Index].LabelPrefix.c_str()))
 			{
-				if (DropdownContents[Index].LabelName == "Skybox")		{ }
-				else if (DropdownContents[Index].LabelName == "Sun")	{ }
-				else if (DropdownContents[Index].LabelName == "Camera")	{ }
-				else													{ }
+				this->SelectedIndex = Index;
+
+				if (DropdownContents[Index].LabelName == "Skybox") {}
+				else if (DropdownContents[Index].LabelName == "Sun") {}
+				else if (DropdownContents[Index].LabelName == "Camera") {}
+				else {}
 			}
 
 			ImGui::PopStyleColor();
@@ -755,12 +839,13 @@ void ComponentsWindowRenderHandler::DrawDropdownMenu(const std::vector<ModelObje
 
 			if (DropdownContents[Index].Selected) { CurrentFlags |= ImGuiTreeNodeFlags_Selected; }
 
-			ImGui::Text(DropdownContents[Index].LabelName.c_str());
+			ImGui::InputText("##TextInputSystem", &DropdownContents[Index].LabelName);
 			ImGui::PopID();
 		}
 		ImGui::EndTable();
 	}
 	ImGui::Separator();
+	ImGui::End();
 }
 
 void ComponentsWindowRenderHandler::DrawRenderSceneWindow(GLFWwindow* EngineWindow,Camera* EngineCamera,InterfaceRenderModule CurrentModule)
@@ -826,7 +911,7 @@ void ComponentsWindowRenderHandler::DrawComponentWindow(GLFWwindow* EngineWindow
 	this->DrawDropdownMenu(this->ObjectProperties);
 	this->NewWorkspace.SetSelectedIndex(this->SelectedIndex);
 
-	if (Console::GridViewEnable) { this->CurrentGridEditor.DrawGrids(); }
+	if (Console::GridViewEnable) { this->CurrentGridEditor.DrawGrids(EngineWindow); }
 
 	this->FeedbackMenuSystem();
 	this->NewTextEditor.DrawCodeEditor({"","CoolText.fs"});

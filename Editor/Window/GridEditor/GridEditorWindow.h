@@ -6,6 +6,8 @@
 #include "../../../../Resources/imgui/imgui.h"
 #include "../../../Utilites/ImGuiUtilites.h"
 
+#include "../../../../Resources/GLFW/glfw3.h"
+
 #define GRID_STEP 32.0f
 #define CLOSE_DISTANCE 32.0f * 0.5f
 
@@ -52,11 +54,12 @@ class GridEditor
 {
 	public:
 										GridEditor(void);
-		void							DrawGrids(void);
+		void							DrawGrids(GLFWwindow* EngineWindow);
 		void							SubmitWorldGeometry(const std::vector<glm::vec3>& Vertices, const std::vector<unsigned int> Indices);
 	private:
 		void							GenerateGeometry(const ImVector<ImVec2>& Points, ViewMode CurrentViewMode);
 		float							FloorHeight;
+		double							LastPressedKey;
 
 		glm::vec3						GridToWorldSpace(const ImVec2& Point, ViewMode CurrentViewMode);
 		ImVec2							WorldToGridSpace(const glm::vec3& Point, ViewMode CurrentViewMode);
