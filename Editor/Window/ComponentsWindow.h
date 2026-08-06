@@ -25,6 +25,7 @@
 #define MENU_SIZE		50.0f
 #define BUILD_VERSION	0.20f
 #define RELEASE_VERSION 0.25f
+#define MAX_TEXT_EDITORS 256
 #define SET_AS_ALPHA
 
 #define ALLOW_FEEDBACK
@@ -60,10 +61,12 @@ struct InterfaceSearchGroup
 	std::string SearchInputText;
 };
 
-struct ExplorerTreeView
+struct ScriptContainer
 {
-	int ParentIndex;
-	int ChildIndex;
+	int	ScriptIndex;
+	bool ScriptActive;
+	std::string ScriptName;
+	std::string ScriptContents;
 };
 
 struct InterfaceAdditionMenu
@@ -89,15 +92,13 @@ class ComponentsWindowRenderHandler
 		void									LoadComponentWindow(void);
 		void									LoadIconFonts(void);
 		void									ApplyLocalTheme(void);
-		void									RecursiveObjectDraw(ImGuiTreeNodeFlags CurrentFlags, std::vector<ExplorerTreeView>& TreeDropdownContent, int LayoutIndex, int ParentIndex, int ChildIndex);
 		void									ShowEditGizmo(Camera* EngineCamera, int ViewportWidth, int ViewportHeight);
 		void									DrawComponentWindow(GLFWwindow* EngineWindow, Camera* EngineCamera, Shader* EngineShader, unsigned int FrameBuffer);
 		void									DrawTextureViewer(void);
 		void									DrawStatusBar(void);
 		void									DrawRenderSceneWindow(GLFWwindow* EngineWindow, Camera* EngineCamera, InterfaceRenderModule CurrentModule);
 		void									DrawMainToolbar(Camera* EngineCamera, Shader* EngineShader);
-		void									DrawAddComponentsMenu(void);
-		void									DrawDropdownMenuRecurse(std::vector<ExplorerTreeView>& DropdownContents);
+		void									DrawAddComponentsMenu(Camera* EngineCamera, Shader* EngineShader);
 		void									DrawDropdownMenu(std::vector<ModelObjectProperties>& DropdownContents);
 		void									DrawSettings(InterfaceValues CurrentValues);
 		void									DrawToolbarWidget(InterfaceValues& CurrentValues, GLFWwindow* EngineWindow, const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& Position);
@@ -119,17 +120,20 @@ class ComponentsWindowRenderHandler
 
 	private:
 
+		void									SpawnScriptInstance(void);
 		void									SpawnCubeInstance(Camera* EngineCamera, Shader* EngineShader);
+		void									RenderScripts(void);
 		
+		void									DrawFileImporter(void);
 		void									DrawAudioToolpack(void);
 		void									DrawDebugToolpack(void);
-		void									DrawModelToolpack(void);
+		void									DrawModelToolpack(Camera* EngineCamera, Shader* EngineShader);
 		void									DrawGeometryToolpack(Camera* EngineCamera, Shader* EngineShader);
 		void									ModeButton(const char* Icon, InterfaceTooltipValues Mode, const ImVec4& ActiveColor);
 		void									FeedbackMenuSystem(void);
 
-		int										CreationIndex;
 		int										InstanceIndex;
+		bool									IsFileImporterOpen;
 		bool									FeedbackToggle;
 		ImVec2									ViewportSafeSpace;
 		ImVec2									CurrentViewportSize;
@@ -138,6 +142,7 @@ class ComponentsWindowRenderHandler
 		ImVec2									CurrentViewportRectMin;
 		ImVec2									CurrentViewportRectSize;
 
+		std::string								PromptFileImport(const char* Filter, const char* FileName);
 		std::string								StatusToMessage(void);
 		std::map<std::string, unsigned int>		TextureGroup;
 		std::map<std::string, unsigned int>		SkyboxGroup;
@@ -147,9 +152,11 @@ class ComponentsWindowRenderHandler
 		std::vector<std::string>				ToolsList				= {"None"};
 		std::vector<std::string>				GroupFolders			= { "Textures","Skybox","Models" };
 		std::vector<std::string>				WidgetTabs				= { "Geometry","Model","Debug","Audio" };
-		std::vector<InterfaceAdditionMenu>		AdditionComponentMenu	= { InterfaceAdditionMenu("Add Mesh",ICON_FA_CUBE), InterfaceAdditionMenu("Add Cube",ICON_FA_CUBE), InterfaceAdditionMenu("Add Lights",ICON_FA_LIGHTBULB), InterfaceAdditionMenu("Add Player",ICON_FA_MAGIC) };
+		std::vector<InterfaceAdditionMenu>		AdditionComponentMenu	= { InterfaceAdditionMenu("Add Mesh",ICON_FA_CUBE), InterfaceAdditionMenu("Add Cube",ICON_FA_CUBE), InterfaceAdditionMenu("Add Lights",ICON_FA_LIGHTBULB), InterfaceAdditionMenu("Add Player",ICON_FA_MAGIC),InterfaceAdditionMenu("Add Script",ICON_FA_SCROLL) };
 		std::vector<ModelObjectProperties>		ObjectProperties;
-		std::vector<ExplorerTreeView>			TreePropertiesView;
+		std::vector<ScriptContainer>			ScriptList;
+		std::vector<CodeEditor>					NewTextEditor;
+		std::map<int, int>						RedirectionList;
 
 		glm::vec3								ObjectScale;
 		glm::vec3								ObjectTranslation;
@@ -157,7 +164,6 @@ class ComponentsWindowRenderHandler
 		glm::vec3								Skew;
 		glm::vec4								Perspective;
 
-		CodeEditor								NewTextEditor;
 		EditorWorkspace							NewWorkspace;
 		InterfaceSearchGroup					NewSearchGroup;
 		GradientBlock							DefaultButtonHovered	= { IM_COL32(40, 40, 40, 255), IM_COL32(20, 20, 20, 255) };

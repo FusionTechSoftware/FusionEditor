@@ -22,6 +22,7 @@ enum SyntaxType
 
 struct InterfaceTextModule
 {
+	int				TextIndex;
 	std::string		TextContainer;
 	std::string		TextTitle;
 };
@@ -30,7 +31,7 @@ class CodeEditor
 {
 	public:
 											CodeEditor(void);
-		void								DrawCodeEditor(InterfaceTextModule CurrentModule);
+		void								DrawCodeEditor(InterfaceTextModule CurrentModule, bool* WindowActive);
 		void								ParseValidSyntax(SyntaxType CurrentType, std::string& EditorContents);
 		void								SetupCodeEditor(const std::string& FileName);
 

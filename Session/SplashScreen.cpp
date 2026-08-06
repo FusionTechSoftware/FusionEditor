@@ -13,7 +13,6 @@ void SplashScreen::GenerateSplashScreen(void)
     glfwMakeContextCurrent(this->SplashScreenFrame);
     gladLoadGL();
     glViewport(0, 0, this->SplashScreenWidth, this->SplashScreenHeight);
-    glfwSwapInterval(1);
 
     if (this->SplashScreenFrame)                                { printf("GLFW failed to initilise the window for FusionEditor Splash screen"); glfwTerminate(); }
     if (gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))     { printf("Failed to load GL!");  glfwTerminate(); }

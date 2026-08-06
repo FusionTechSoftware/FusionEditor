@@ -1,4 +1,5 @@
 #include "CodeEditor.h"
+#include <iostream>
 
 CodeEditor::CodeEditor(void) {}
 
@@ -21,9 +22,10 @@ void CodeEditor::SetupCodeEditor(const std::string& FileName)
 	this->SyntaxHighlight.SetLanguageDefinition(this->SyntaxDefinition);
 }
 
-void CodeEditor::DrawCodeEditor(InterfaceTextModule CurrentModule)
+void CodeEditor::DrawCodeEditor(InterfaceTextModule CurrentModule, bool* WindowActive)
 {
-	ImGuiUtilites::BeginGradient(CurrentModule.TextTitle.c_str(), this->CodeGradientBlock, nullptr);
+	if (!(*WindowActive)) { return; }
+	ImGuiUtilites::BeginGradient((CurrentModule.TextTitle+"##"+std::to_string(CurrentModule.TextIndex)).c_str(), this->CodeGradientBlock, WindowActive);
 
 	if (this->SyntaxDefinition.mExtension == "unknown" || !this->IsFileTypeCorrect(CurrentModule.TextTitle, this->SyntaxDefinition.mExtension))
 	{

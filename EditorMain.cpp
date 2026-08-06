@@ -5,6 +5,7 @@ EditorMain::EditorMain(void)
     this->LastNormalTrigger     = 0.0;
     this->ViewportHeight        = 0.0f;
     this->ViewportWidth         = 0.0f;
+    this->IsActive              = false;
 };
 
 void MouseViewCallback(GLFWwindow* EngineWindow, int Button, int Action, int Mods)
@@ -70,7 +71,7 @@ void EditorMain::SpecialKeyFunction(void)
         {
             if (glfwGetTime() - this->LastNormalTrigger >= 0.4f)
             {
-                Console::SysPrint("Pased Object", 1);
+                Console::SysPrint("Pasted Object", 1);
                 this->LastNormalTrigger = glfwGetTime();
             }
         }
@@ -102,8 +103,24 @@ void EditorMain::SpecialKeyFunction(void)
     }
 }
 
+void EditorMain::RunBackgroundProcess(void)
+{
+    this->NewSplashScreen.GenerateSplashScreen();
+
+    while (this->IsActive)
+    {
+        this->NewSplashScreen.RenderSplashScreen();
+    }
+
+    this->NewSplashScreen.DestroySplashScreen();
+}
+
 void EditorMain::StartEngine(void)
 {
+    this->IsActive = true;
+    this->CurrentThreadPool.CreateThreads(1);
+    //this->CurrentThreadPool.SubmitJob([this]() {this->RunBackgroundProcess(); });
+
     this->NewSessionManager.CreateSession();
 
     Commands::SetFromRegister("world", "../Fusion/DebugData.zip");
@@ -260,6 +277,7 @@ void EditorMain::CloseEngine(void)
 int main()
 {
     EditorMain NewEngine;
+
     NewEngine.StartEngine();
     NewEngine.RenderEngine();
     NewEngine.CloseEngine();

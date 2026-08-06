@@ -10,16 +10,18 @@ ComponentsWindowRenderHandler::ComponentsWindowRenderHandler(void)
 	this->CurrentInterfaceValue.IsSettingsMenuOpen	= false;
 	this->CurrentInterfaceValue.IsTextureMenuOpen	= false;
 	this->CurrentInterfaceValue.LogoImageID			= 0;
-	
-	this->CreationIndex			= 0;
-	this->TreePropertiesView	= {};
-	this->ObjectProperties		= {};
 
-	this->CurrentStatus		= STATUS_READY;
-	this->CurrentToolValue	= VALUE_POINTER;
-	this->FeedbackToggle	= false;
-	this->SelectedIndex		= -1;
-	this->InstanceIndex		= 0;
+	this->ObjectProperties		= {};
+	this->ScriptList			= {};
+	this->NewTextEditor			= {};
+	this->RedirectionList		= {};
+
+	this->CurrentStatus			= STATUS_READY;
+	this->CurrentToolValue		= VALUE_POINTER;
+	this->FeedbackToggle		= false;
+	this->IsFileImporterOpen	= false;
+	this->SelectedIndex			= -1;
+	this->InstanceIndex			= 0;
 }
 
 std::string ComponentsWindowRenderHandler::StatusToMessage(void)
@@ -37,6 +39,37 @@ std::string ComponentsWindowRenderHandler::StatusToMessage(void)
 		default:
 			return "ComponentsWindowRenderHandler::StatusToMessage Failed To Retrieve Message.";
 	}
+}
+
+std::string ComponentsWindowRenderHandler::PromptFileImport(const char* Filter, const char* FileName)
+{
+	OPENFILENAME OpenFileName;
+	char File[260];
+	HWND WindowHandle;
+	HANDLE HandleFrame;
+
+	ZeroMemory(&OpenFileName, sizeof(OpenFileName));
+	OpenFileName.lStructSize = sizeof(OpenFileName);
+	OpenFileName.lpstrFile = File;
+
+	OpenFileName.lpstrFile[0] = '\0';
+	OpenFileName.nMaxFile = sizeof(File);
+	OpenFileName.lpstrFilter = Filter;
+	OpenFileName.nFilterIndex = 1;
+	OpenFileName.lpstrFileTitle = NULL;
+	OpenFileName.nMaxFileTitle = 0;
+	OpenFileName.lpstrInitialDir = NULL;
+	OpenFileName.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+	if (GetOpenFileName(&OpenFileName) == TRUE)
+	{
+		if (std::string(File).find(FileName) != std::string::npos)
+		{
+			return std::string(File);
+		}
+	}
+
+	return "invalid";
 }
 
 EditorWorkspace& ComponentsWindowRenderHandler::ReturnEditorWorkspaceObject(void)	{ return this->NewWorkspace; }
@@ -147,6 +180,10 @@ void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentVa
 	const float Spacing		= 5.0f;
 	bool IsEditorFullScreen = std::get<bool>(Commands::GetFromRegister("editorfullscreen"));
 
+	static bool Dragging = false;
+	static double OffsetX, OffsetY = 0.0;
+	double MouseX, MouseY;
+
 	if (ImGui::BeginMainMenuBar())
 	{
 		ImGuiUtilites::GradientRect(
@@ -212,6 +249,45 @@ void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentVa
 			}
 			ImGui::SameLine(0, Spacing);
 		}
+
+		// @TODO: Change the window fullscreen mode system, where if the user enters a new monitor region, it should adhere and resize to that 
+		// window fullscreen (Could have some problems with resolution) 
+
+		if (glfwGetMouseButton(EngineWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+		{
+			if (glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED)) 
+			{
+				double MouseX, MouseY;
+				glfwGetCursorPos(EngineWindow, &MouseX, &MouseY);
+
+				// We could've used the GLFW_RELEASE command to reset dragging, however its unneeded extra work.
+				if (!Dragging)
+				{
+					Dragging = true;
+					int CurrentWindowX, CurrentWindowY;
+
+					// Gather the current window position and the offsets.
+					glfwGetWindowPos(EngineWindow, &CurrentWindowX, &CurrentWindowY);
+					OffsetX = MouseX;
+					OffsetY = MouseY;
+				}
+
+
+				// We would have used an adjustment system to gather the cursor pos and offset the window based upon the window position
+				double GlobalX, GlobalY;
+				POINT WindowPoint;
+				glfwGetCursorPos(EngineWindow, &GlobalX, &GlobalY);
+				GetCursorPos(&WindowPoint);
+
+				glfwSetWindowPos(EngineWindow,
+					WindowPoint.x - (int)OffsetX,
+					WindowPoint.y - (int)OffsetY);
+			}
+		}
+		else
+		{
+			Dragging = false;
+		}
 		
 
 #ifdef ALLOW_FEEDBACK
@@ -229,8 +305,8 @@ void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentVa
 
 		if (ImGuiUtilites::ButtonGradient((glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED) ? "[ ]" : "[]"), ImVec2(ButtonWidth, ImGui::GetFrameHeight()), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal))
 		{ 
-			if (glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED))	{ glfwRestoreWindow(EngineWindow); }
-			else													{ glfwMaximizeWindow(EngineWindow); }
+			if (glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED))	{ glfwRestoreWindow(EngineWindow); Commands::SetFromRegister("editorfullscreen", false); }
+			else													{ glfwMaximizeWindow(EngineWindow); Commands::SetFromRegister("editorfullscreen", true); }
 		}
 		ImGui::SameLine(0, Spacing);
 
@@ -239,7 +315,7 @@ void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentVa
 			glfwTerminate();
 			exit(0);
 		}
-		
+
 		ImGui::EndMainMenuBar();
 	}
 }
@@ -260,7 +336,6 @@ void ComponentsWindowRenderHandler::SpawnCubeInstance(Camera* EngineCamera,Shade
 	// Moved the creation instance to a seperate function for multiple instance creations within seperate windows
 	// reduces redundancy.
 	ModelObjectProperties NewObject;
-	ExplorerTreeView NewTreeView;
 
 	// + glm::normalize(EngineCamera->Orientation) * SpawnDistance;
 	float SpawnDistance		= 50.0f;
@@ -275,21 +350,52 @@ void ComponentsWindowRenderHandler::SpawnCubeInstance(Camera* EngineCamera,Shade
 	NewObject.Scale			= Scale;
 
 	NewObject.Index			= this->InstanceIndex; // @EDIT - We could use this as an index selection system using SelectedIndex perhaps?
-	NewObject.LabelName		= "NewObject" + (this->InstanceIndex > 1 ? " (" + std::to_string(this->InstanceIndex) + ")" : "");
+	NewObject.LabelName		= "NewObject" + (this->InstanceIndex >= 1 ? " (" + std::to_string(this->InstanceIndex) + ")" : "");
 	NewObject.LabelPrefix	= ICON_FA_CUBE; // @TODO - We could edit this and add different predetermined objects (spheres,cubes,cones ect.)
 	
 	NewObject.ObjectDataType = DATATYPE_BLOCK; // Used to determine the type of object we are seeing.
 
-	NewTreeView.ParentIndex = this->CreationIndex;
-	NewTreeView.ChildIndex	= -1; //So far we can create within the child index node as null.
-
-
 	this->ObjectProperties.push_back(NewObject);
-	this->TreePropertiesView.push_back(NewTreeView);
 	this->CurrentGridEditor.SubmitWorldGeometry(EditorUtilites::GroupVector3(CubeVertices), CubeIndices);
 	this->NewWorkspace.CreateGeometryData(EngineShader, CubeVertices, CubeIndices, Translation, Rotation, Scale, "", SHAPE_BLOCK, -1);
 
-	this->CreationIndex++;
+	this->InstanceIndex++;
+}
+
+void ComponentsWindowRenderHandler::SpawnScriptInstance(void)
+{
+	// This would be the place where we would create a new script, alongside initilising the script contents. We should use an interpreter to 
+	// help read and "recompile" the script into bytecode.
+
+	if (this->NewTextEditor.size() >= MAX_TEXT_EDITORS) { Console::SysPrint("Cannot spawn any more code editors. Consider closing text editors to fix this.", 2); return; }
+
+	ScriptContainer NewContainer;
+	CodeEditor NewCodeWidget;
+	ModelObjectProperties NewObject; // We could rename the thing?
+
+	std::string NewScriptName	= "NewScript" + (this->InstanceIndex >= 1 ? " (" + std::to_string(this->InstanceIndex) + ")" : "") + ".fs";
+
+	NewContainer.ScriptContents = "";
+	NewContainer.ScriptName		= NewScriptName;
+	NewContainer.ScriptIndex	= this->InstanceIndex;
+
+	NewObject.Translate		= glm::vec3(0.0f, 0.0f, 0.0f);
+	NewObject.Rotation		= glm::quat(0.0f, 0.0f, 0.0f, 0.0f);
+	NewObject.Scale			= glm::vec3(0.0f, 0.0f, 0.0f);
+
+	NewObject.Index			= this->InstanceIndex;
+	NewObject.LabelName		= NewScriptName;
+	NewObject.LabelPrefix	= ICON_FA_SCROLL;
+
+	NewObject.ObjectDataType = DATATYPE_SCRIPT; // A new addition to the object data type value.
+	NewCodeWidget.SetupCodeEditor(NewScriptName); // Start the code syntax system.
+
+	this->NewTextEditor.push_back(NewCodeWidget); // This should be the same as the ScriptList vector.
+	this->ScriptList.push_back(NewContainer);
+	this->ObjectProperties.push_back(NewObject);
+
+	this->RedirectionList[this->InstanceIndex] = this->ScriptList.size() - 1;
+	this->InstanceIndex++;
 }
 
 void ComponentsWindowRenderHandler::ModeButton(const char* Icon, InterfaceTooltipValues Mode, const ImVec4& ActiveColor)
@@ -402,13 +508,22 @@ void ComponentsWindowRenderHandler::DrawGeometryToolpack(Camera* EngineCamera, S
 	ImGui::PopItemWidth();
 }
 
-void ComponentsWindowRenderHandler::DrawModelToolpack(void) 
+void ComponentsWindowRenderHandler::DrawModelToolpack(Camera* EngineCamera, Shader* EngineShader) 
 {
-	if (ImGuiUtilites::ButtonGradient(ICON_FA_LIGHTBULB, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_CUBE, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { this->SpawnCubeInstance(EngineCamera, EngineShader); }
 	if (ImGui::IsItemHovered())
 	{
 		ImGui::BeginTooltip();
-		ImGui::Text("Spawn Light");
+		ImGui::Text("Spawn Cube");
+		ImGui::EndTooltip();
+	}
+
+	ImGui::SameLine();
+	if (ImGuiUtilites::ButtonGradient(ICON_FA_FILE_IMPORT, ImVec2(40.0f, 40.0f), ImVec4(20.0f, 160.0f, 20.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { this->IsFileImporterOpen = !this->IsFileImporterOpen; }
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::BeginTooltip();
+		ImGui::Text("Import Meshes");
 		ImGui::EndTooltip();
 	}
 }
@@ -543,7 +658,7 @@ void ComponentsWindowRenderHandler::DrawMainToolbar(Camera* EngineCamera, Shader
 
 	ImGui::SetCursorPos(ImVec2(8.0f, 5.0f));
 	if (this->CurrentWidget == WidgetTabs[0])			{ this->DrawGeometryToolpack(EngineCamera, EngineShader); }
-	else if (this->CurrentWidget == WidgetTabs[1])		{ this->DrawModelToolpack(); }
+	else if (this->CurrentWidget == WidgetTabs[1])		{ this->DrawModelToolpack(EngineCamera, EngineShader); }
 	else if (this->CurrentWidget == WidgetTabs[2])		{ this->DrawDebugToolpack(); }
 	else if (this->CurrentWidget == WidgetTabs[3])		{ this->DrawAudioToolpack(); }
 
@@ -555,7 +670,7 @@ void ComponentsWindowRenderHandler::DrawMainToolbar(Camera* EngineCamera, Shader
 	ImGui::End();
 }
 
-void ComponentsWindowRenderHandler::DrawAddComponentsMenu(void)
+void ComponentsWindowRenderHandler::DrawAddComponentsMenu(Camera* EngineCamera, Shader* EngineShader)
 {
 	std::string Label;
 	int Count;
@@ -580,7 +695,13 @@ void ComponentsWindowRenderHandler::DrawAddComponentsMenu(void)
 		{
 			Label = this->AdditionComponentMenu[Index].Icons + " " + this->AdditionComponentMenu[Index].Name;
 			
-			if (ImGuiUtilites::ButtonGradient(Label.c_str(), ImVec2(120.0f, 30.0f), ImVec4(0.0f,0.0f,0.0f,120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) {}
+			if (ImGuiUtilites::ButtonGradient(Label.c_str(), ImVec2(120.0f, 30.0f), ImVec4(0.0f,0.0f,0.0f,120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) 
+			{
+				// @TODO: so far these are hardcoded, perhaps we could use a function pointer (void*) to create a new function storage? 
+
+				if (this->AdditionComponentMenu[Index].Icons == ICON_FA_CUBE)	{ this->SpawnCubeInstance(EngineCamera,EngineShader); }
+				if (this->AdditionComponentMenu[Index].Icons == ICON_FA_SCROLL)	{ this->SpawnScriptInstance(); }
+			}
 
 			if (++Count % Columns != 0) { ImGui::SameLine(); }
 		}
@@ -606,6 +727,31 @@ void ComponentsWindowRenderHandler::DrawStatusBar(void)
 	ImGui::SameLine();
 	ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
 	ImGui::End();
+}
+
+void ComponentsWindowRenderHandler::DrawFileImporter(void)
+{
+	if (this->IsFileImporterOpen)
+	{
+		std::string ImportDestination = "invalid";
+		ImGui::Begin("Mesh File Importer");
+
+		ImGui::Text("Please choose what mesh file you would like to import.");
+		ImGui::Separator();		
+
+		if (ImGuiUtilites::ButtonGradient("\xef\x95\xb4  Import .OBJ", ImVec2(160.0f, 25.0f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { ImportDestination = this->PromptFileImport("Wavefront OBJ\0*.obj\0", ".obj"); }
+		if (ImGuiUtilites::ButtonGradient("\xef\x95\xb4 Import .GLTF", ImVec2(160.0f, 25.0f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { ImportDestination = this->PromptFileImport("Khronos GLTF\0*.gltf\0", ".gltf"); }
+		if (ImGuiUtilites::ButtonGradient("\xef\x95\xb4  Import .FBX", ImVec2(160.0f, 25.0f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { ImportDestination = this->PromptFileImport("Autodesk FBX\0*.fbx\0", ".fbx"); }
+		if (ImGuiUtilites::ButtonGradient("\xef\x95\xb4  Import .FMD", ImVec2(160.0f, 25.0f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { ImportDestination = this->PromptFileImport("Fusion Model Data\0*.fmd\0", ".fmd"); }
+
+		ImGui::End();
+
+		if (ImportDestination != "invalid")
+		{
+			std::cout << "File is ready!" << "\n";
+			std::cout << ImportDestination << "\n";
+		}
+	}
 }
 
 void ComponentsWindowRenderHandler::DrawTextureViewer(void)
@@ -733,72 +879,6 @@ void ComponentsWindowRenderHandler::DrawSettings(InterfaceValues CurrentValues)
 	}
 }
 
-void ComponentsWindowRenderHandler::RecursiveObjectDraw(ImGuiTreeNodeFlags CurrentFlags,std::vector<ExplorerTreeView>& TreeDropdownContent,int LayoutIndex,int ParentIndex,int ChildIndex)
-{
-	// This would be a horrible no good recursive system that would take up memory
-	// @TODO: Perhaps make a cutoff amount of recursion to not infinitly recurse.
-
-	// This might not be used. Might be useless. Just display all objects/blocks that are found within the world. Even better we can create sections that are found similar to Visual studio
-	
-	const bool IsSelectable = this->ObjectProperties[ParentIndex].ObjectDataType != DATATYPE_ENVIROMENT_NOINTERACT;
-
-	ImGui::PushID(LayoutIndex);
-	ImGui::TableNextRow();
-	ImGui::TableSetColumnIndex(0);
-
-	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
-	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(6.0f, 4.0f));
-
-	if (IsSelectable)	{ ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.65f, 0.35f, 1.00f)); }
-	else				{ ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.22f, 0.16f, 1.00f)); }
-
-	if (ImGui::TreeNode(this->ObjectProperties[ParentIndex].LabelPrefix.c_str()))
-	{
-		if	(this->ObjectProperties[ParentIndex].LabelName == "Skybox")			{}
-		else if (this->ObjectProperties[ParentIndex].LabelName == "Sun")		{}
-		else if (this->ObjectProperties[ParentIndex].LabelName == "Camera")		{}
-		else {}
-
-		if (ChildIndex != -1)
-		{
-			this->RecursiveObjectDraw(CurrentFlags, TreeDropdownContent, LayoutIndex, ParentIndex,ChildIndex);
-		}
-
-		ImGui::TreePop();
-	}
-
-	ImGui::PopStyleColor();
-	ImGui::PopStyleVar(2);
-	ImGui::TableSetColumnIndex(1);
-
-	if (this->ObjectProperties[TreeDropdownContent[LayoutIndex].ParentIndex].Selected) { CurrentFlags |= ImGuiTreeNodeFlags_Selected; }
-
-	ImGui::InputText(("##TextInputSystem"+std::to_string(LayoutIndex)).c_str(), &this->ObjectProperties[TreeDropdownContent[LayoutIndex].ParentIndex].LabelName);
-	ImGui::PopID();
-}
-
-void ComponentsWindowRenderHandler::DrawDropdownMenuRecurse(std::vector<ExplorerTreeView>& DropdownContents)
-{
-	//This would be seperate version in which would draw the dropdown menu using recursion.
-
-	ImGui::Begin("World Explorer");
-	ImGuiTreeNodeFlags CurrentFlags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-
-	if (ImGui::BeginTable("EnviromentHirachy", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))
-	{
-		ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 60.0f);
-		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
-
-		for (int Index = 0; Index < DropdownContents.size(); Index++)
-		{
-			this->RecursiveObjectDraw(CurrentFlags, DropdownContents, Index, DropdownContents[Index].ParentIndex, DropdownContents[Index].ChildIndex);
-		}
-		ImGui::EndTable();
-	}
-	ImGui::Separator();
-	ImGui::End();
-}
-
 void ComponentsWindowRenderHandler::DrawDropdownMenu(std::vector<ModelObjectProperties>& DropdownContents)
 {
 	ImGui::Begin("World Explorer");
@@ -823,14 +903,23 @@ void ComponentsWindowRenderHandler::DrawDropdownMenu(std::vector<ModelObjectProp
 			if (IsSelectable && this->SelectedIndex == Index)	{ ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.10f, 0.65f, 0.35f, 1.00f)); }
 			else												{ ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.22f, 0.16f, 1.00f)); }
 
-			if (ImGui::Button(DropdownContents[Index].LabelPrefix.c_str()))
+			if (ImGui::Button(DropdownContents[Index].LabelPrefix.c_str(),ImVec2(50.0f,20.0f)))
 			{
-				this->SelectedIndex = Index;
-
 				if (DropdownContents[Index].LabelName == "Skybox") {}
 				else if (DropdownContents[Index].LabelName == "Sun") {}
 				else if (DropdownContents[Index].LabelName == "Camera") {}
 				else {}
+
+				// @TODO: Again another hardcoded system. Maybe just edit this so its automatic?
+				if (DropdownContents[Index].LabelPrefix == ICON_FA_SCROLL)
+				{
+					this->ScriptList[this->RedirectionList[Index]].ScriptActive = !this->ScriptList[this->RedirectionList[Index]].ScriptActive;
+					this->SelectedIndex = -1;
+				}
+				else
+				{
+					this->SelectedIndex = Index;
+				}
 			}
 
 			ImGui::PopStyleColor();
@@ -877,6 +966,18 @@ void ComponentsWindowRenderHandler::DrawRenderSceneWindow(GLFWwindow* EngineWind
 		Console::LockMouse = true;
 	}
 }
+
+void ComponentsWindowRenderHandler::RenderScripts(void)
+{
+	for (int Index = 0; Index < this->ScriptList.size(); Index++)
+	{
+		// This should have the same number as the code editor widget for now...
+		// We could add more for shaders ect.
+		
+		this->NewTextEditor[Index].DrawCodeEditor({ this->ScriptList[Index].ScriptIndex,this->ScriptList[Index].ScriptContents,this->ScriptList[Index].ScriptName},&this->ScriptList[Index].ScriptActive);
+	}
+}
+
 void ComponentsWindowRenderHandler::DrawComponentWindow(GLFWwindow* EngineWindow, Camera* EngineCamera,Shader* EngineShader,unsigned int FrameBuffer)
 {
 	const float ToolbarHeight	= 40.0f;
@@ -914,8 +1015,9 @@ void ComponentsWindowRenderHandler::DrawComponentWindow(GLFWwindow* EngineWindow
 	if (Console::GridViewEnable) { this->CurrentGridEditor.DrawGrids(EngineWindow); }
 
 	this->FeedbackMenuSystem();
-	this->NewTextEditor.DrawCodeEditor({"","CoolText.fs"});
-	this->DrawAddComponentsMenu();
+	this->DrawFileImporter();
+	this->DrawAddComponentsMenu(EngineCamera,EngineShader);
+	this->RenderScripts();
 	this->DrawTextureViewer();
 	this->DrawRenderSceneWindow(EngineWindow,EngineCamera,{FrameBuffer,static_cast<int>(CurrentViewport->Size.x),static_cast<int>(CurrentViewport->Size.y),"MyScene"});
 
@@ -927,4 +1029,9 @@ void ComponentsWindowRenderHandler::DrawComponentWindow(GLFWwindow* EngineWindow
 void ComponentsWindowRenderHandler::Destroy(int Index)
 {
 	this->NewWorkspace.DestroyBlocks(Index);
+
+	for (int Index = 0; Index < this->NewTextEditor.size(); Index++)
+	{
+		// We should destroy the object here!
+	}
 }
