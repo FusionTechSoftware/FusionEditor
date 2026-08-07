@@ -162,16 +162,65 @@ void ComponentsWindowRenderHandler::LoadIconFonts(void)
 
 	NewIO.Fonts->AddFontFromFileTTF("../Fusion/Fonts/fa-regular-400.ttf", IconFontSize, &NewFontConfig, IconRange);
 	NewIO.Fonts->AddFontFromFileTTF("../Fusion/Fonts/fa-solid-900.ttf", IconFontSize, &NewFontConfig, IconRange);
+}
 
-	this->CurrentInterfaceValue.LogoImageID = ImageUtility::LoadTextureIntoMemory(ImageUtility::ReadImageBuffer("../Fusion/Images/Logo.imgbuf"));
+void ComponentsWindowRenderHandler::LoadDescriptiveImage(void)
+{
+	this->CurrentInterfaceValue.LogoImageID		= ImageUtility::LoadTextureIntoMemory(ImageUtility::ReadImageBuffer("../Fusion/Images/Logo.imgbuf"));
+	this->UnknownImageID						= ImageUtility::LoadTextureIntoMemory(ImageUtility::ReadImageBuffer("../Fusion/Images/Camera.imgbuf"));
+	this->SpawnID								= ImageUtility::LoadTextureIntoMemory(ImageUtility::ReadImageBuffer("../Fusion/Images/Spawn.imgbuf"));
+	this->ThumbnailID							= ImageUtility::LoadTextureIntoMemory(ImageUtility::ReadImageBuffer("../Fusion/Images/Thumbnail.imgbuf"));
 }
 
 void ComponentsWindowRenderHandler::LoadComponentWindow(void)
 {
 	this->ApplyLocalTheme();
 	this->LoadIconFonts();
+	this->LoadDescriptiveImage();
 	ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	this->CurrentStatus			= STATUS_READY;
+}
+
+void ComponentsWindowRenderHandler::SubmitParserDataToEditor(const std::vector<ParserMap>& ParserContents)
+{
+	for (int Index = 0; Index < ParserContents.size(); Index++)
+	{
+		// This might be a very crap way of sorting the files based on the contents but this should do
+		// We could add verification to these so if we cant read a file, just ignore it or add a question mark.
+		AssetViewModule NewModule;
+		ImageBufferFormatLocal NewLocalFormat;
+		std::string CurrentFileName = ParserContents[Index].LabelName;
+		bool ImageAvailable = (CurrentFileName.find("Textures/") != std::string::npos || CurrentFileName.find("Skybox/") != std::string::npos);
+
+		if (ImageAvailable)
+		{
+			// We would have to apply to a local format for it to work.
+			NewLocalFormat.TextureWidth		= ParserContents[Index].ImageFormat.TextureWidth;
+			NewLocalFormat.TextureHeight	= ParserContents[Index].ImageFormat.TextureHeight;
+			NewLocalFormat.TextureData		= ParserContents[Index].ImageFormat.TextureData;
+			NewLocalFormat.TextureChannel	= ParserContents[Index].ImageFormat.TextureChannel;
+		}
+
+		NewModule.AssetImage = (ImageAvailable ? ImageUtility::LoadTextureIntoMemory(NewLocalFormat) : this->UnknownImageID);
+		NewModule.AssetUnicodeImage = "Asset";
+
+		if (CurrentFileName.find("Textures/") != std::string::npos)
+		{ 
+			this->TextureGroup[CurrentFileName] = NewModule;
+		}
+		if (CurrentFileName.find("Models/") != std::string::npos)
+		{
+			this->ModelGroup[CurrentFileName] = NewModule;
+		}
+		if (CurrentFileName.find("Skybox/") != std::string::npos)
+		{
+			this->SkyboxGroup[CurrentFileName] = NewModule;
+		}
+		if (CurrentFileName.find("Shader/") != std::string::npos)
+		{
+			this->ShaderGroup[CurrentFileName] = NewModule;
+		}
+	}
 }
 
 void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentValues, GLFWwindow* EngineWindow, const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& Position)
@@ -303,7 +352,7 @@ void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentVa
 		if (ImGuiUtilites::ButtonGradient("_",ImVec2(ButtonWidth, ImGui::GetFrameHeight()), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), this->DefaultButtonHovered,this->DefaultButtonActive,this->DefaultButtonNormal)) { glfwIconifyWindow(EngineWindow); }
 		ImGui::SameLine(0, Spacing);
 
-		if (ImGuiUtilites::ButtonGradient((glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED) ? "[ ]" : "[]"), ImVec2(ButtonWidth, ImGui::GetFrameHeight()), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal))
+		if (ImGuiUtilites::ButtonGradient((glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED) ? "[]" : "[ ]"), ImVec2(ButtonWidth, ImGui::GetFrameHeight()), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal))
 		{ 
 			if (glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED))	{ glfwRestoreWindow(EngineWindow); Commands::SetFromRegister("editorfullscreen", false); }
 			else													{ glfwMaximizeWindow(EngineWindow); Commands::SetFromRegister("editorfullscreen", true); }
@@ -325,6 +374,9 @@ void ComponentsWindowRenderHandler::FeedbackMenuSystem(void)
 #ifdef ALLOW_FEEDBACK
 	if (!this->FeedbackToggle) { return; }
 	ImGui::Begin("Feedback Menu");
+
+	// @TODO: do a feedback menu here (could link to gmail or smth)
+	ImGui::Text("No feedback menu yet :(");
 
 	ImGui::End();
 #endif
@@ -367,7 +419,7 @@ void ComponentsWindowRenderHandler::SpawnScriptInstance(void)
 	// This would be the place where we would create a new script, alongside initilising the script contents. We should use an interpreter to 
 	// help read and "recompile" the script into bytecode.
 
-	if (this->NewTextEditor.size() >= MAX_TEXT_EDITORS) { Console::SysPrint("Cannot spawn any more code editors. Consider closing text editors to fix this.", 2); return; }
+	if (this->NewTextEditor.size() >= MAX_TEXT_EDITORS) { Console::SysPrint("Cannot spawn any more code editors. Consider closing text editors to fix this.", 2); return; } // Try not to lag the editor.
 
 	ScriptContainer NewContainer;
 	CodeEditor NewCodeWidget;
@@ -734,24 +786,35 @@ void ComponentsWindowRenderHandler::DrawFileImporter(void)
 	if (this->IsFileImporterOpen)
 	{
 		std::string ImportDestination = "invalid";
+		ImGui::SetNextWindowSize(ImVec2(535.0f, 380.0f));
 		ImGui::Begin("Mesh File Importer");
 
 		ImGui::Text("Please choose what mesh file you would like to import.");
 		ImGui::Separator();		
 
-		if (ImGuiUtilites::ButtonGradient("\xef\x95\xb4  Import .OBJ", ImVec2(160.0f, 25.0f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { ImportDestination = this->PromptFileImport("Wavefront OBJ\0*.obj\0", ".obj"); }
-		if (ImGuiUtilites::ButtonGradient("\xef\x95\xb4 Import .GLTF", ImVec2(160.0f, 25.0f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { ImportDestination = this->PromptFileImport("Khronos GLTF\0*.gltf\0", ".gltf"); }
+		if (ImGuiUtilites::ButtonGradient("\xef\x95\xb4  Import .OBJ", ImVec2(160.0f, 25.0f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { ImportDestination = this->PromptFileImport("Wavefront OBJ\0*.obj\0", ".obj"); }	
+		if (ImGuiUtilites::ButtonGradient("\xef\x95\xb4  Import .GLTF", ImVec2(160.0f, 25.0f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { ImportDestination = this->PromptFileImport("Khronos GLTF\0*.gltf\0", ".gltf"); }
 		if (ImGuiUtilites::ButtonGradient("\xef\x95\xb4  Import .FBX", ImVec2(160.0f, 25.0f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { ImportDestination = this->PromptFileImport("Autodesk FBX\0*.fbx\0", ".fbx"); }
 		if (ImGuiUtilites::ButtonGradient("\xef\x95\xb4  Import .FMD", ImVec2(160.0f, 25.0f), ImVec4(0.0f, 0.0f, 0.0f, 0.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { ImportDestination = this->PromptFileImport("Fusion Model Data\0*.fmd\0", ".fmd"); }
 
+		//We can draw the image to the side as a preview. Otherwise we just generate a default thumbnail.
+		ImGui::SetCursorPos(ImVec2(200.0f, 50.0f));
+		ImGui::Image((ImTextureRef)(-1), ImVec2(300.0f, 300.0f));
+
 		ImGui::End();
 
-		if (ImportDestination != "invalid")
+		if (ImportDestination != "invalid") // Just avoid any return values that doesnt contain the file that we want (basically "invalid")
 		{
-			std::cout << "File is ready!" << "\n";
-			std::cout << ImportDestination << "\n";
+
 		}
 	}
+}
+
+void ComponentsWindowRenderHandler::ManageAssetBeingPicked(const std::string& FolderSelectedName)
+{
+	if (FolderSelectedName == this->GroupFolders[1])		{}
+	else if (FolderSelectedName == this->GroupFolders[2])	{}
+	else													{}
 }
 
 void ComponentsWindowRenderHandler::DrawTextureViewer(void)
@@ -764,22 +827,31 @@ void ComponentsWindowRenderHandler::DrawTextureViewer(void)
 
 	for (int Index = 0; Index < this->GroupFolders.size(); Index++)
 	{
-		if (ImGuiUtilites::ButtonGradient(this->GroupFolders[Index].c_str(),ImVec2(ImGui::CalcTextSize(this->GroupFolders[Index].c_str()).x + TextPadding, 20.0f), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), this->DefaultButtonHovered, this->DefaultButtonActive, this->DefaultButtonNormal)) { FolderSelectedName = GroupFolders[Index]; }
+		// We should select the active option that we have to display the user what section they are in.
+		if (ImGuiUtilites::ButtonGradient(this->GroupFolders[Index].c_str(),ImVec2(ImGui::CalcTextSize(this->GroupFolders[Index].c_str()).x + TextPadding, 20.0f), ImVec4(0.0f, 0.0f, 0.0f, 120.0f), 
+			(FolderSelectedName == this->GroupFolders[Index] ? this->GreenShinyButtonActive : this->GreenShinyButtonNormal),
+			(FolderSelectedName == this->GroupFolders[Index] ? this->GreenShinyButtonActive : this->GreenShinyButtonNormal),
+			(FolderSelectedName == this->GroupFolders[Index] ? this->GreenShinyButtonActive : this->GreenShinyButtonNormal))
+		) // Weird naming sceme but essentially would glow the button based upon if its selected.
+		{ FolderSelectedName = this->GroupFolders[Index]; }
 		ImGui::SameLine();
 	}
 
 	ImGui::SameLine();
 
-	ImGui::PushItemWidth(150);
+	ImGui::PushItemWidth(145);
 	ImGui::InputText("Search", &this->NewSearchGroup.SearchInputText);
 	ImGui::PopItemWidth();
-	ImGui::NewLine();
+
+	ImGui::NewLine(); // Why do we need newline if we are setting the cursor position?
+	ImGui::SetCursorPos(ImVec2(10.0f,55.0f)); 
 
 	if (ImGui::BeginChild("ScrollingRegion", ImVec2(0.0f, 0.0f), true, ImGuiWindowFlags_HorizontalScrollbar))
 	{
 		std::string NewString;
-		static std::map<std::string, unsigned int> ObjectMapIndex = {};
+		static std::map<std::string, AssetViewModule> ObjectMapIndex = {};
 
+		// @TODO: Perhaps make this constant? Will this affect anything?
 		int Count				= 0;
 		float ThumbnailSize		= 128.0f;
 		float Padding			= 16.0f;
@@ -790,27 +862,53 @@ void ComponentsWindowRenderHandler::DrawTextureViewer(void)
 
 		if (FolderSelectedName != "")
 		{
-			if (FolderSelectedName == GroupFolders[0])		{ ObjectMapIndex = this->TextureGroup; }
-			else if (FolderSelectedName == GroupFolders[1]) { ObjectMapIndex = this->SkyboxGroup; }
-			else if (FolderSelectedName == GroupFolders[2]) { ObjectMapIndex = this->ModelGroup; }
+			//Basic system, when selecting the actual thing we use, we just change the data group (They should be within the same "format")
+			if (FolderSelectedName == this->GroupFolders[0])		{ ObjectMapIndex = this->TextureGroup; }
+			else if (FolderSelectedName == this->GroupFolders[1])	{ ObjectMapIndex = this->SkyboxGroup; }
+			else if (FolderSelectedName == this->GroupFolders[2])	{ ObjectMapIndex = this->ModelGroup; }
+			else if (FolderSelectedName == this->GroupFolders[3])	{ ObjectMapIndex = this->ShaderGroup; }
 		}
 
 		if (Columns < 1) { Columns = 1; }
 
-		for (std::map<std::string, unsigned int>::iterator NewIterator = ObjectMapIndex.begin(); NewIterator != ObjectMapIndex.end(); NewIterator++)
+		for (std::map<std::string, AssetViewModule>::iterator NewIterator = ObjectMapIndex.begin(); NewIterator != ObjectMapIndex.end(); NewIterator++)
 		{
+			if (this->NewSearchGroup.SearchInputText.size() != 0)
+			{
+				//Store them as new objects to be compared so we dont affect the actual name.
+				std::string ItemName	= NewIterator->first;
+				std::string ToBeFound	= this->NewSearchGroup.SearchInputText;
+
+				EditorUtilites::ConvertStringToLowercase(ItemName);
+				EditorUtilites::ConvertStringToLowercase(ToBeFound);
+
+				if (ItemName.find(ToBeFound) == std::string::npos)
+				{
+					continue;
+				}
+			}
+
 			NewString = "";
 			ImGui::BeginGroup();
 
-			if (NewIterator->first.size() > 15) { NewString = NewIterator->first.substr(0, 15) + "..."; }
+			if (NewIterator->first.size() > 15) { NewString = NewIterator->first.substr(0, 15) + "..."; } // Does the string length exceed 15 characters? Cap it!
 			else								{ NewString = NewIterator->first; }
 
-			if (ImGui::ImageButton(NewIterator->first.c_str(), (ImTextureID)(intptr_t)(NewIterator->second), ImVec2(ThumbnailSize, ThumbnailSize), ImVec2(0, 1), ImVec2(1, 0)))
+			if (NewIterator->second.AssetImage == -1)
 			{
-				if (FolderSelectedName == GroupFolders[1])			{ }
-				else if (FolderSelectedName == GroupFolders[2])		{ }
-				else												{ }
+				if (ImGui::Button(NewIterator->second.AssetUnicodeImage.c_str(), ImVec2(ThumbnailSize, ThumbnailSize)))
+				{
+					this->ManageAssetBeingPicked(FolderSelectedName);
+				}
 			}
+			else
+			{
+				if (ImGui::ImageButton(NewIterator->first.c_str(), (ImTextureID)(intptr_t)(NewIterator->second.AssetImage), ImVec2(ThumbnailSize, ThumbnailSize), ImVec2(0, 0), ImVec2(1, 1)))
+				{
+					this->ManageAssetBeingPicked(FolderSelectedName);
+				}
+			}
+
 
 			ImGui::TextWrapped("%s", NewString.c_str());
 			ImGui::EndGroup();
@@ -1032,6 +1130,6 @@ void ComponentsWindowRenderHandler::Destroy(int Index)
 
 	for (int Index = 0; Index < this->NewTextEditor.size(); Index++)
 	{
-		// We should destroy the object here!
+		// @TODO: We should destroy the object here!
 	}
 }

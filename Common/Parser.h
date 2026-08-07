@@ -43,6 +43,7 @@ class Parser
         void                            FetchFromDatapack(const std::string& FilePath);
         bool                            LoadFromBuffer(const char* Buffer,size_t BufferSize,ImageBufferFormat* ImageFormatOut);
         std::string                     GetDatapackData(const std::string& FileName);
+        std::vector<ParserMap>          GetParserData(void);
         std::vector<unsigned char>      GetURIData(const std::string& ModelDataContents);
         ImageFormat                     GetImageBuffer(const std::string& FileName);
         FILE*                           LoadSceneBSPFile(const std::string& Datapack,const std::string& SceneFileName);

@@ -95,6 +95,17 @@ float EditorUtilites::DistanceRayPoint(const glm::vec3& RayOrigin, const glm::ve
 	return glm::length(Point - Closest);
 }
 
+void EditorUtilites::ConvertStringToLowercase(std::string& NewString)
+{
+	for (char& Character : NewString)
+	{
+		if (Character >= 'A' && Character <= 'Z')
+		{
+			Character += 32;
+		}
+	}
+}
+
 std::vector<VertexPoint> EditorUtilites::ConvertVertexToPosition(const std::vector<float>& Vertices)
 {
 	std::vector<VertexPoint> EditorPoint = {};

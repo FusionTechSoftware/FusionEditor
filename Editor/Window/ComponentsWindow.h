@@ -21,6 +21,8 @@
 #include "PropertiesWindow.h"
 #include "CodeEditor.h"
 
+#include "../../Common/Parser.h"
+
 #define MENU_OFFSET		20.0f
 #define MENU_SIZE		50.0f
 #define BUILD_VERSION	0.20f
@@ -85,13 +87,21 @@ struct InterfaceRenderModule
 	std::string		RenderTitle;
 };
 
+struct AssetViewModule
+{
+	unsigned int	AssetImage;
+	std::string		AssetUnicodeImage;
+};
+
 class ComponentsWindowRenderHandler
 {
 	public:
 												ComponentsWindowRenderHandler(void);
 		void									LoadComponentWindow(void);
 		void									LoadIconFonts(void);
+		void									LoadDescriptiveImage(void);
 		void									ApplyLocalTheme(void);
+		void									SubmitParserDataToEditor(const std::vector<ParserMap>& ParserContents);
 		void									ShowEditGizmo(Camera* EngineCamera, int ViewportWidth, int ViewportHeight);
 		void									DrawComponentWindow(GLFWwindow* EngineWindow, Camera* EngineCamera, Shader* EngineShader, unsigned int FrameBuffer);
 		void									DrawTextureViewer(void);
@@ -130,7 +140,12 @@ class ComponentsWindowRenderHandler
 		void									DrawModelToolpack(Camera* EngineCamera, Shader* EngineShader);
 		void									DrawGeometryToolpack(Camera* EngineCamera, Shader* EngineShader);
 		void									ModeButton(const char* Icon, InterfaceTooltipValues Mode, const ImVec4& ActiveColor);
+		void									ManageAssetBeingPicked(const std::string& FolderSelectedName);
 		void									FeedbackMenuSystem(void);
+
+		unsigned int							UnknownImageID;
+		unsigned int							SpawnID;
+		unsigned int							ThumbnailID;
 
 		int										InstanceIndex;
 		bool									IsFileImporterOpen;
@@ -144,13 +159,14 @@ class ComponentsWindowRenderHandler
 
 		std::string								PromptFileImport(const char* Filter, const char* FileName);
 		std::string								StatusToMessage(void);
-		std::map<std::string, unsigned int>		TextureGroup;
-		std::map<std::string, unsigned int>		SkyboxGroup;
-		std::map<std::string, unsigned int>		ModelGroup;
+		std::map<std::string, AssetViewModule>	TextureGroup;
+		std::map<std::string, AssetViewModule>	SkyboxGroup;
+		std::map<std::string, AssetViewModule>	ModelGroup;
+		std::map<std::string, AssetViewModule>	ShaderGroup;
 
 		std::string								CurrentWidget			= "Geometry";
 		std::vector<std::string>				ToolsList				= {"None"};
-		std::vector<std::string>				GroupFolders			= { "Textures","Skybox","Models" };
+		std::vector<std::string>				GroupFolders			= { "Textures","Skybox","Models","Shader" };
 		std::vector<std::string>				WidgetTabs				= { "Geometry","Model","Debug","Audio" };
 		std::vector<InterfaceAdditionMenu>		AdditionComponentMenu	= { InterfaceAdditionMenu("Add Mesh",ICON_FA_CUBE), InterfaceAdditionMenu("Add Cube",ICON_FA_CUBE), InterfaceAdditionMenu("Add Lights",ICON_FA_LIGHTBULB), InterfaceAdditionMenu("Add Player",ICON_FA_MAGIC),InterfaceAdditionMenu("Add Script",ICON_FA_SCROLL) };
 		std::vector<ModelObjectProperties>		ObjectProperties;
@@ -158,7 +174,7 @@ class ComponentsWindowRenderHandler
 		std::vector<CodeEditor>					NewTextEditor;
 		std::map<int, int>						RedirectionList;
 
-		glm::vec3								ObjectScale;
+		glm::vec3								ObjectScale;	
 		glm::vec3								ObjectTranslation;
 		glm::quat								ObjectRotation;
 		glm::vec3								Skew;
@@ -175,6 +191,9 @@ class ComponentsWindowRenderHandler
 		GradientBlock							GreenButtonNormal		= { IM_COL32(40, 40, 40, 255), IM_COL32(20, 20, 20, 255) };
 
 		GradientBlock							BlueButtonHovered		= { IM_COL32(20, 20, 20, 255), IM_COL32(107, 179, 255, 255) };
+
+		GradientBlock							GreenShinyButtonActive	= { IM_COL32(21, 112, 0, 255), IM_COL32(4, 23, 0, 255) };
+		GradientBlock							GreenShinyButtonNormal	= { IM_COL32(40, 40, 40, 255), IM_COL32(20, 20, 20, 255) };
 };
 
 #endif

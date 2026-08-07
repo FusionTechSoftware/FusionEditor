@@ -44,6 +44,7 @@ void SessionManager::CreateSession(void)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
     glfwWindowHint(GLFW_SAMPLES,GL_MSAA_SAMPLES);
     
+    // The values should be somewhat constant. Perhaps we could add a function to update this from the users request.
     this->Width         = std::get<float>(Commands::GetFromRegister("width"));
     this->Height        = std::get<float>(Commands::GetFromRegister("height"));
     this->Fullscreen    = std::get<bool>(Commands::GetFromRegister("usefullscreen"));
@@ -55,6 +56,13 @@ void SessionManager::CreateSession(void)
     gladLoadGL();
     glViewport(0,0,this->Width,this->Height);
     glfwSwapInterval(1);
+
+    //Currently we would enable
+    // -> Blend
+    // -> Culling
+    // -> Depth Test
+    // -> Alpha transparency blending.
+    // However they may be disabled during program runtime.
 
     glEnable(GL_MULTISAMPLE);
     glEnable(GL_PROGRAM_POINT_SIZE);
@@ -78,6 +86,7 @@ void SessionManager::CreateSession(void)
 
 void SessionManager::CalculateDeltaTime(void)
 {
+    // Calculate the delta time interval and the frames per second (Would also be displayed)
     this->CurrentTime   = glfwGetTime();
     this->DeltaTime     = this->CurrentTime-this->PreviousTime;
     this->Counter++;
@@ -97,6 +106,8 @@ void SessionManager::UpdateWorld(const std::string& WorldDirectory)
 
 void SessionManager::UpdateEngineValue(void)
 {
+    // Set the local values gathered from the register system. Keep in mind this only occurs if this function is called!
+
     this->Near                      = std::get<float>(Commands::GetFromRegister("near"));
     this->Far                       = std::get<float>(Commands::GetFromRegister("far"));
     this->FieldOfView               = std::get<float>(Commands::GetFromRegister("fov"));
@@ -159,6 +170,7 @@ void SessionManager::CreateEngine(void)
         ImGui_ImplOpenGL3_Init();
 
         this->EditorToolbar.LoadComponentWindow();
+        this->EditorToolbar.SubmitParserDataToEditor(this->EditorComponents.EngineParser.GetParserData());
         this->FirstTimeInitilized = false;
     }
 

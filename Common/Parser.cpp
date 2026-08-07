@@ -44,6 +44,9 @@ ImageFormat Parser::GetImageBuffer(const std::string& FileName)
     return ImageFormat{};
 }
 
+std::vector<ParserMap> Parser::GetParserData(void) { return this->ParserGroup; }
+
+// This is no longer needed. Perhaps it was kept as a legacy loader (we could do a bsp import system here)
 FILE* Parser::LoadSceneBSPFile(const std::string& Datapack,const std::string& SceneFileName)
 {
     char TemporaryFileName[L_tmpnam];
@@ -56,7 +59,7 @@ FILE* Parser::LoadSceneBSPFile(const std::string& Datapack,const std::string& Sc
     void* FilePointer           = mz_zip_reader_extract_file_to_heap(&NewArchive,SceneFileName.c_str(),&SceneExtractedSize,0);
     mz_zip_reader_end(&NewArchive);
 
-    if (!FilePointer) {Console::SysPrint("Failed to get file from Datapack ('"+Datapack+"' -> '"+SceneFileName+"'.",3); return nullptr;}
+    if (!FilePointer) {Console::SysPrint("Failed to get file from Datapack ('"+Datapack+"' -> '"+SceneFileName+"').",3); return nullptr;}
 
     FILE* NewTemporaryFilePointer = tmpfile();
     if (!NewTemporaryFilePointer) {Console::SysPrint("Failed to create a temporary file.",3); return nullptr;}
