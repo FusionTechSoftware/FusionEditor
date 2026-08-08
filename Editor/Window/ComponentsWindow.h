@@ -43,10 +43,17 @@ enum InterfaceTooltipValues
 
 enum InterfaceStatusValues
 {
-	STATUS_UNKNOWN,
+	STATUS_UNKNOWN = 0,
 	STATUS_ERROR,
 	STATUS_WARNING,
 	STATUS_READY
+};
+
+enum ScriptInstanceQuery
+{
+	SCRIPT_UNKNOWN = 0,
+	SCRIPT_SHADER,
+	SCRIPT_BYTECODE
 };
 
 struct InterfaceValues
@@ -85,6 +92,13 @@ struct InterfaceRenderModule
 	int				ViewportWidth;
 	int				ViewportHeight;
 	std::string		RenderTitle;
+};
+
+struct ScriptInfomation
+{
+	std::string				FileName;
+	std::string				FileContents;
+	ScriptInstanceQuery		ScriptType;
 };
 
 struct AssetViewModule
@@ -134,20 +148,25 @@ class ComponentsWindowRenderHandler
 		void									SpawnCubeInstance(Camera* EngineCamera, Shader* EngineShader);
 		void									RenderScripts(void);
 		
+		void									OpenScriptsInstance(const std::string& ItemName);
 		void									DrawFileImporter(void);
 		void									DrawAudioToolpack(void);
 		void									DrawDebugToolpack(void);
 		void									DrawModelToolpack(Camera* EngineCamera, Shader* EngineShader);
 		void									DrawGeometryToolpack(Camera* EngineCamera, Shader* EngineShader);
 		void									ModeButton(const char* Icon, InterfaceTooltipValues Mode, const ImVec4& ActiveColor);
-		void									ManageAssetBeingPicked(const std::string& FolderSelectedName);
+		void									ManageAssetBeingPicked(const std::string& FolderSelectedName, const std::string& ItemName);
 		void									FeedbackMenuSystem(void);
+		int										GetScriptIndexFromName(const std::string& ItemName);
+		ScriptContainer							GetScriptFromName(const std::string& ItemName);
 
 		unsigned int							UnknownImageID;
 		unsigned int							SpawnID;
 		unsigned int							ThumbnailID;
+		unsigned int							CodeID;
 
 		int										InstanceIndex;
+		int										ScriptInstanceIndex;
 		bool									IsFileImporterOpen;
 		bool									FeedbackToggle;
 		ImVec2									ViewportSafeSpace;
@@ -163,6 +182,8 @@ class ComponentsWindowRenderHandler
 		std::map<std::string, AssetViewModule>	SkyboxGroup;
 		std::map<std::string, AssetViewModule>	ModelGroup;
 		std::map<std::string, AssetViewModule>	ShaderGroup;
+
+		std::map<std::string, ScriptInfomation>	ScriptContents;
 
 		std::string								CurrentWidget			= "Geometry";
 		std::vector<std::string>				ToolsList				= {"None"};

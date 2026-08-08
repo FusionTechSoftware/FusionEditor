@@ -21,6 +21,7 @@ ComponentsWindowRenderHandler::ComponentsWindowRenderHandler(void)
 	this->FeedbackToggle		= false;
 	this->IsFileImporterOpen	= false;
 	this->SelectedIndex			= -1;
+	this->ScriptInstanceIndex	= 0;
 	this->InstanceIndex			= 0;
 }
 
@@ -79,6 +80,34 @@ ImVec2 ComponentsWindowRenderHandler::ReturnViewportSafeSpace(void)					{ return
 ImVec2 ComponentsWindowRenderHandler::ReturnViewportLocalScreenPosition(void)		{ return this->CurrentLocalScreenPosition; }
 ImVec2 ComponentsWindowRenderHandler::ReturnViewportRectMin(void)					{ return this->CurrentViewportRectMin; }
 ImVec2 ComponentsWindowRenderHandler::ReturnViewportRectSize(void)					{ return this->CurrentViewportRectSize; }
+
+ScriptContainer ComponentsWindowRenderHandler::GetScriptFromName(const std::string& ItemName)
+{
+	// Checks if the script is active using the scripts name (The script should be stored by the name)
+
+	for (int Index = 0; Index < this->ScriptList.size(); Index++)
+	{
+		if (this->ScriptList[Index].ScriptName == ItemName)
+		{
+			return this->ScriptList[Index];
+		}
+	}
+
+	return {};
+}
+
+int ComponentsWindowRenderHandler::GetScriptIndexFromName(const std::string& ItemName)
+{
+	for (int Index = 0; Index < this->ScriptList.size(); Index++)
+	{
+		if (this->ScriptList[Index].ScriptName == ItemName)
+		{
+			return Index;
+		}
+	}
+
+	return -1;
+}
 
 void ComponentsWindowRenderHandler::ApplyLocalTheme(void)
 {
@@ -170,6 +199,7 @@ void ComponentsWindowRenderHandler::LoadDescriptiveImage(void)
 	this->UnknownImageID						= ImageUtility::LoadTextureIntoMemory(ImageUtility::ReadImageBuffer("../Fusion/Images/Camera.imgbuf"));
 	this->SpawnID								= ImageUtility::LoadTextureIntoMemory(ImageUtility::ReadImageBuffer("../Fusion/Images/Spawn.imgbuf"));
 	this->ThumbnailID							= ImageUtility::LoadTextureIntoMemory(ImageUtility::ReadImageBuffer("../Fusion/Images/Thumbnail.imgbuf"));
+	this->CodeID								= ImageUtility::LoadTextureIntoMemory(ImageUtility::ReadImageBuffer("../Fusion/Images/Code.imgbuf"));
 }
 
 void ComponentsWindowRenderHandler::LoadComponentWindow(void)
@@ -201,7 +231,7 @@ void ComponentsWindowRenderHandler::SubmitParserDataToEditor(const std::vector<P
 			NewLocalFormat.TextureChannel	= ParserContents[Index].ImageFormat.TextureChannel;
 		}
 
-		NewModule.AssetImage = (ImageAvailable ? ImageUtility::LoadTextureIntoMemory(NewLocalFormat) : this->UnknownImageID);
+		NewModule.AssetImage = (ImageAvailable ? ImageUtility::LoadTextureIntoMemory(NewLocalFormat) : (CurrentFileName.find("Shader/") != std::string::npos ? this->CodeID : this->UnknownImageID));
 		NewModule.AssetUnicodeImage = "Asset";
 
 		if (CurrentFileName.find("Textures/") != std::string::npos)
@@ -218,7 +248,13 @@ void ComponentsWindowRenderHandler::SubmitParserDataToEditor(const std::vector<P
 		}
 		if (CurrentFileName.find("Shader/") != std::string::npos)
 		{
-			this->ShaderGroup[CurrentFileName] = NewModule;
+			ScriptInfomation NewInfomation;
+
+			NewInfomation.FileName		= ParserContents[Index].LabelName;
+			NewInfomation.FileContents	= ParserContents[Index].DataContents;
+
+			this->ShaderGroup[CurrentFileName]		= NewModule;
+			this->ScriptContents[CurrentFileName]	= NewInfomation;
 		}
 	}
 }
@@ -425,29 +461,29 @@ void ComponentsWindowRenderHandler::SpawnScriptInstance(void)
 	CodeEditor NewCodeWidget;
 	ModelObjectProperties NewObject; // We could rename the thing?
 
-	std::string NewScriptName	= "NewScript" + (this->InstanceIndex >= 1 ? " (" + std::to_string(this->InstanceIndex) + ")" : "") + ".fs";
+	std::string NewScriptName	= "NewScript" + (this->ScriptInstanceIndex >= 1 ? " (" + std::to_string(this->ScriptInstanceIndex) + ")" : "") + ".fs";
 
 	NewContainer.ScriptContents = "";
 	NewContainer.ScriptName		= NewScriptName;
-	NewContainer.ScriptIndex	= this->InstanceIndex;
+	NewContainer.ScriptIndex	= this->ScriptInstanceIndex;
 
 	NewObject.Translate		= glm::vec3(0.0f, 0.0f, 0.0f);
 	NewObject.Rotation		= glm::quat(0.0f, 0.0f, 0.0f, 0.0f);
 	NewObject.Scale			= glm::vec3(0.0f, 0.0f, 0.0f);
 
-	NewObject.Index			= this->InstanceIndex;
+	NewObject.Index			= this->ScriptInstanceIndex;
 	NewObject.LabelName		= NewScriptName;
 	NewObject.LabelPrefix	= ICON_FA_SCROLL;
 
 	NewObject.ObjectDataType = DATATYPE_SCRIPT; // A new addition to the object data type value.
-	NewCodeWidget.SetupCodeEditor(NewScriptName); // Start the code syntax system.
+	NewCodeWidget.SetupCodeEditor(NewScriptName,""); // Start the code syntax system.
 
 	this->NewTextEditor.push_back(NewCodeWidget); // This should be the same as the ScriptList vector.
 	this->ScriptList.push_back(NewContainer);
 	this->ObjectProperties.push_back(NewObject);
 
-	this->RedirectionList[this->InstanceIndex] = this->ScriptList.size() - 1;
-	this->InstanceIndex++;
+	this->RedirectionList[this->ScriptInstanceIndex] = this->ScriptList.size() - 1;
+	this->ScriptInstanceIndex++; // We are changing the index system to a seperate script index to keep track.
 }
 
 void ComponentsWindowRenderHandler::ModeButton(const char* Icon, InterfaceTooltipValues Mode, const ImVec4& ActiveColor)
@@ -799,7 +835,7 @@ void ComponentsWindowRenderHandler::DrawFileImporter(void)
 
 		//We can draw the image to the side as a preview. Otherwise we just generate a default thumbnail.
 		ImGui::SetCursorPos(ImVec2(200.0f, 50.0f));
-		ImGui::Image((ImTextureRef)(-1), ImVec2(300.0f, 300.0f));
+		ImGui::Image((ImTextureRef)(this->UnknownImageID), ImVec2(300.0f, 300.0f));
 
 		ImGui::End();
 
@@ -810,11 +846,44 @@ void ComponentsWindowRenderHandler::DrawFileImporter(void)
 	}
 }
 
-void ComponentsWindowRenderHandler::ManageAssetBeingPicked(const std::string& FolderSelectedName)
+void ComponentsWindowRenderHandler::OpenScriptsInstance(const std::string& ItemName)
 {
-	if (FolderSelectedName == this->GroupFolders[1])		{}
-	else if (FolderSelectedName == this->GroupFolders[2])	{}
-	else													{}
+	
+	if (this->GetScriptIndexFromName(ItemName) != -1)
+	{
+		bool ScriptActiveQuery = this->GetScriptFromName(ItemName).ScriptActive;
+
+		if (ScriptActiveQuery) { Console::SysPrint("Script is already active", 1); }
+		else
+		{
+			this->ScriptList[this->GetScriptIndexFromName(ItemName)].ScriptActive = true;
+			return; //Dont need to create another script instance. We already have one.
+		}
+	}
+	else
+	{
+		ScriptContainer NewScriptContainer;
+		CodeEditor NewCodeWidget;
+
+		NewScriptContainer.ScriptName = ItemName;
+		NewScriptContainer.ScriptContents = this->ScriptContents[ItemName].FileContents;
+		NewScriptContainer.ScriptIndex = this->ScriptInstanceIndex;
+
+		NewCodeWidget.SetupCodeEditor(ItemName,this->ScriptContents[ItemName].FileContents);
+
+		this->NewTextEditor.push_back(NewCodeWidget);
+		this->ScriptList.push_back(NewScriptContainer);
+		this->ScriptInstanceIndex++;
+	}
+}
+
+void ComponentsWindowRenderHandler::ManageAssetBeingPicked(const std::string& FolderSelectedName,const std::string& ItemName)
+{
+	if (FolderSelectedName == this->GroupFolders[0])		{} //Texture
+	else if (FolderSelectedName == this->GroupFolders[1])	{} //Skybox
+	else if (FolderSelectedName == this->GroupFolders[2])	{} //Model
+	else if (FolderSelectedName == this->GroupFolders[3])	{ this->OpenScriptsInstance(ItemName); } //Shader
+	else													{ Console::SysPrint("ComponentsWindowRenderHandler::ManageAssetBeingPicked got invalid folder name.", 3); }
 }
 
 void ComponentsWindowRenderHandler::DrawTextureViewer(void)
@@ -884,7 +953,8 @@ void ComponentsWindowRenderHandler::DrawTextureViewer(void)
 
 				if (ItemName.find(ToBeFound) == std::string::npos)
 				{
-					continue;
+					// If we cant find the element that matches the current string. just ignore and actually use the things found.
+					continue; 
 				}
 			}
 
@@ -893,24 +963,30 @@ void ComponentsWindowRenderHandler::DrawTextureViewer(void)
 
 			if (NewIterator->first.size() > 15) { NewString = NewIterator->first.substr(0, 15) + "..."; } // Does the string length exceed 15 characters? Cap it!
 			else								{ NewString = NewIterator->first; }
-
+	
 			if (NewIterator->second.AssetImage == -1)
 			{
 				if (ImGui::Button(NewIterator->second.AssetUnicodeImage.c_str(), ImVec2(ThumbnailSize, ThumbnailSize)))
 				{
-					this->ManageAssetBeingPicked(FolderSelectedName);
+					this->ManageAssetBeingPicked(FolderSelectedName, NewIterator->first);
 				}
 			}
 			else
 			{
 				if (ImGui::ImageButton(NewIterator->first.c_str(), (ImTextureID)(intptr_t)(NewIterator->second.AssetImage), ImVec2(ThumbnailSize, ThumbnailSize), ImVec2(0, 0), ImVec2(1, 1)))
 				{
-					this->ManageAssetBeingPicked(FolderSelectedName);
+					this->ManageAssetBeingPicked(FolderSelectedName, NewIterator->first);
 				}
 			}
 
 
 			ImGui::TextWrapped("%s", NewString.c_str());
+			if (ImGui::IsItemHovered())
+			{
+				ImGui::BeginTooltip();
+				ImGui::Text(NewIterator->first.c_str()); // Actually show the full string if the user wants to see
+				ImGui::EndTooltip();
+			}
 			ImGui::EndGroup();
 
 			if (++Count % Columns != 0) { ImGui::SameLine(); }

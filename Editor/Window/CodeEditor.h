@@ -4,6 +4,7 @@
 #include <map>
 #include <algorithm>
 #include <sstream>
+#include <Windows.h>
 
 #include "../../../Resources/imgui/imgui.h"
 #include "../../../Resources/imgui/imgui_impl_opengl3.h"
@@ -33,7 +34,9 @@ class CodeEditor
 											CodeEditor(void);
 		void								DrawCodeEditor(InterfaceTextModule CurrentModule, bool* WindowActive);
 		void								ParseValidSyntax(SyntaxType CurrentType, std::string& EditorContents);
-		void								SetupCodeEditor(const std::string& FileName);
+		void								SetupCodeEditor(const std::string& FileName, const std::string& FileContents);
+
+		void								CopyTextToClipboard(const std::string& TextString);
 
 	private:
 		bool								IsFileTypeCorrect(const std::string& FileName, const std::string& FileExtension);
