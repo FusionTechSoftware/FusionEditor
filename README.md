@@ -4,7 +4,7 @@
 This would be a standalone editor for the "Fusion Engine". Improvements would be made overtime with different branches. The overall interface would be rendered
 using IMGUI and OpenGL with GLFW being the base window manager.
 
-<img width="1918" height="1018" alt="{FE5A642D-7653-4037-A8C6-5BD00ADD883B}" src="https://github.com/user-attachments/assets/040726a8-86c8-404a-8b53-3909d6cfeb45" />
+<img width="1916" height="1019" alt="{2CED55F2-1051-4E2C-810F-DA4D7BA577AB}" src="https://github.com/user-attachments/assets/6926e3b7-2964-45bd-8700-dd732eeab8cc" />
 
 ## Features of the editor 
 - Improved raycasting and object interaction (although more improvements would need to be made)
