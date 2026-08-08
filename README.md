@@ -10,7 +10,7 @@ using IMGUI and OpenGL with GLFW being the base window manager.
 - Text editor windows with different text editor formats.
 - Package file textures and data are displayed
 - The search feature for all items works
-- 
+  
 ## Features of the editor 
 - Improved raycasting and object interaction (although more improvements would need to be made)
 - Improvements to performance with lesser draw calls than previous editors
