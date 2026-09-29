@@ -25,6 +25,52 @@ bool EditorUtilites::DoesRayIntersectTriangle(const glm::vec3& RayOrigin, const 
 	return Triangle > Epsilon;
 }
 
+bool EditorUtilites::RayIntersectsAABB(
+	const glm::vec3& Origin,
+	const glm::vec3& Direction,
+	const glm::vec3& Min,
+	const glm::vec3& Max,
+	float& Distance)
+{
+	float tMin = 0.0f;
+	float tMax = FLT_MAX;
+
+	for (int Axis = 0; Axis < 3; ++Axis)
+	{
+		if (std::abs(Direction[Axis]) < 0.000001f)
+		{
+			// Ray is parallel to this axis.
+			if (Origin[Axis] < Min[Axis] ||
+				Origin[Axis] > Max[Axis])
+			{
+				return false;
+			}
+
+			continue;
+		}
+
+		float InvDirection = 1.0f / Direction[Axis];
+
+		float t1 =
+			(Min[Axis] - Origin[Axis]) * InvDirection;
+
+		float t2 =
+			(Max[Axis] - Origin[Axis]) * InvDirection;
+
+		if (t1 > t2)
+			std::swap(t1, t2);
+
+		tMin = std::max(tMin, t1);
+		tMax = std::min(tMax, t2);
+
+		if (tMin > tMax)
+			return false;
+	}
+
+	Distance = tMin;
+	return true;
+}
+
 bool EditorUtilites::DoesRayIntersectBounds(const glm::vec3& RayOrigin, const glm::vec3& RayDirection, const glm::vec3& BoxMinimum, const glm::vec3& BoxMaximum, float& T)
 {
 	float TMin	= (BoxMinimum.x - RayOrigin.x) / RayDirection.x;
@@ -101,7 +147,7 @@ void EditorUtilites::ConvertStringToLowercase(std::string& NewString)
 	{
 		if (Character >= 'A' && Character <= 'Z')
 		{
-			Character += 32;
+			Character += 32; // Using ascii system.
 		}
 	}
 }
@@ -167,6 +213,11 @@ std::vector<VertexPoint> EditorUtilites::GetWorldPointsFromMatrix(const std::vec
 	return NewPoints;
 }
 
+std::vector<float> EditorUtilites::UpdateWorldSpaceGeometryFromMatrix(const std::vector<float>& Vertices, const glm::mat4& NewMatrix)
+{
+	return EditorUtilites::ConvertPositionToVertex(EditorUtilites::GetWorldPointsFromMatrix(Vertices, NewMatrix));
+}
+
 std::vector<float> EditorUtilites::ConvertPositionToVertex(const std::vector<VertexPoint>& Vertices)
 {
 	std::vector<float> EditorPoints = {};
@@ -229,7 +280,7 @@ glm::vec3 EditorUtilites::GetTriangleNormalFromWorldPosition(const glm::vec3& Ve
 
 glm::vec3 EditorUtilites::GetRayFromMouse(const glm::mat4& Projection, const glm::mat4& View, double MouseX, double MouseY, int Width, int Height)
 {
-#if 1
+#if 0
 	float X = (1.0f * MouseX) / Width - 1.0f;
 	float Y = 1.0f - (2.0f * MouseY) / Height;
 
@@ -258,7 +309,6 @@ glm::vec3 EditorUtilites::GetRayFromMouse(const glm::mat4& Projection, const glm
 
 	return RayWorld;
 #endif
-
 }
 
 

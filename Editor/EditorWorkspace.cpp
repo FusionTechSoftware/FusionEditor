@@ -2,7 +2,8 @@
 
 EditorWorkspace::EditorWorkspace(void) 
 {
-	this->GivenSelectedIndex = -1;
+	this->GivenSelectedIndex	= -1;
+	this->GeometryClipboard		= nullptr;
 }
 
 BoundsRenderer& EditorWorkspace::GetBoundsSystem(void) { return this->BoundDrawingSystem; }
@@ -27,7 +28,7 @@ glm::vec3& EditorWorkspace::GetScale(int Index)
 
 glm::mat4& EditorWorkspace::GetPositionMatrix(int Index)
 {
-	if (!this->DoesIndexExist(Index)) { return glm::mat4(0.0f); }
+	if (!this->DoesIndexExist(Index)) { return glm::mat4(1.0f); }
 	return this->DrawableGeometry[Index].TranslationMatrix;
 }
 
@@ -52,11 +53,38 @@ bool EditorWorkspace::DoesIndexExist(int Index)
 	return true;
 }
 
+void EditorWorkspace::UpdateVertices(int Index,const std::vector<float>& NewVertices,bool ModifyVertices)
+{
+	if (ModifyVertices) { this->DrawableGeometry[Index].Vertices = NewVertices; }
+
+	glBindBuffer(GL_ARRAY_BUFFER, this->DrawableGeometry[Index].VertexBuffer);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, this->DrawableGeometry[Index].Vertices.size() * sizeof(float), this->DrawableGeometry[Index].Vertices.data());
+}
+
+void EditorWorkspace::UpdateWorldGeometryData(int Index,const glm::mat4& Matrix)
+{
+	if (this->DrawableGeometry[Index].IsGeometryInWorldPosition)
+	{
+		this->DrawableGeometry[Index].Vertices = EditorUtilites::UpdateWorldSpaceGeometryFromMatrix(
+			this->DrawableGeometry[Index].OriginalVertices,
+			Matrix
+		);
+	}
+
+	this->UpdateVertices(Index, this->DrawableGeometry[Index].Vertices, false);
+}
+
 void EditorWorkspace::SetPosition(int Index, const glm::vec3& Translation)
 {
 	if (!this->DoesIndexExist(Index)) { return; }
 	this->DrawableGeometry[Index].Translation			= Translation;
-	this->DrawableGeometry[Index].TranslationMatrix		= glm::translate(this->DrawableGeometry[Index].TranslationMatrix, Translation);
+	this->DrawableGeometry[Index].TranslationMatrix		= glm::translate(glm::mat4(1.0f), Translation);
+
+	this->UpdateWorldGeometryData(Index, 
+		this->DrawableGeometry[Index].TranslationMatrix * 
+		this->DrawableGeometry[Index].RotationMatrix * 
+		this->DrawableGeometry[Index].ScaleMatrix
+	);
 }
 
 void EditorWorkspace::SetRotation(int Index, const glm::quat& Rotation)
@@ -64,13 +92,25 @@ void EditorWorkspace::SetRotation(int Index, const glm::quat& Rotation)
 	if (!this->DoesIndexExist(Index)) { return; }
 	this->DrawableGeometry[Index].Rotation			= Rotation;
 	this->DrawableGeometry[Index].RotationMatrix	= glm::mat4_cast(Rotation);
+
+	this->UpdateWorldGeometryData(Index,
+		this->DrawableGeometry[Index].TranslationMatrix *
+		this->DrawableGeometry[Index].RotationMatrix *
+		this->DrawableGeometry[Index].ScaleMatrix
+	);
 }
 
 void EditorWorkspace::SetScale(int Index, const glm::vec3& Scale)
 {
 	if (!this->DoesIndexExist(Index)) { return; }
 	this->DrawableGeometry[Index].Scale			= Scale;
-	this->DrawableGeometry[Index].ScaleMatrix	= glm::scale(this->DrawableGeometry[Index].ScaleMatrix, Scale);
+	this->DrawableGeometry[Index].ScaleMatrix	= glm::scale(glm::mat4(1.0f), Scale);
+
+	this->UpdateWorldGeometryData(Index,
+		this->DrawableGeometry[Index].TranslationMatrix *
+		this->DrawableGeometry[Index].RotationMatrix *
+		this->DrawableGeometry[Index].ScaleMatrix
+	);
 }
 
 void EditorWorkspace::SetVisible(int Index, bool Visible)
@@ -101,10 +141,10 @@ void EditorWorkspace::SetGeometryData(Shader* BoundShader, GeometryData NewGeome
 	glBindVertexArray(NewGeometryData.VertexArray);
 
 	glBindBuffer(GL_ARRAY_BUFFER, NewGeometryData.VertexBuffer);
-	glBufferData(GL_ARRAY_BUFFER, NewGeometryData.WorldPositions.size() * sizeof(VertexPoint), NewGeometryData.WorldPositions.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, NewGeometryData.WorldPositions.size() * sizeof(VertexPoint), NewGeometryData.WorldPositions.data(), GL_DYNAMIC_DRAW);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, NewGeometryData.ElementBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, NewGeometryData.Indices.size() * sizeof(unsigned int), NewGeometryData.Indices.data(), GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, NewGeometryData.Indices.size() * sizeof(unsigned int), NewGeometryData.Indices.data(), GL_STATIC_DRAW); // Indices should not be modified as much.
 
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(VertexPoint), (void*)0);
 	glEnableVertexAttribArray(0);
@@ -129,6 +169,7 @@ void EditorWorkspace::CreateGeometryData(Shader* BoundShader, const std::vector<
 {
 	GeometryData NewGeometryData;
 
+	NewGeometryData.OriginalVertices	= Vertices;
 	NewGeometryData.Vertices			= Vertices;
 	NewGeometryData.Indices				= Indices;
 
@@ -143,6 +184,7 @@ void EditorWorkspace::CreateGeometryData(Shader* BoundShader, const std::vector<
 	NewGeometryData.GeometryTextureFormat.DiffuseID			= TextureID;
 	NewGeometryData.GeometryTextureFormat.DiffuseTexture	= TextureName;
 	NewGeometryData.GeometryBoundingBox						= this->BoundCreationSystem.GenerateNewBounds(EditorUtilites::GroupVector3(Vertices), Translation);
+	NewGeometryData.IsGeometryInWorldPosition				= true;
 
 	this->SetGeometryData(BoundShader, NewGeometryData);
 }
@@ -175,7 +217,7 @@ void EditorWorkspace::DrawGeometryScene(Shader* DrawableShader, const glm::mat4&
 		DrawableShader->SetMatrix4(this->DrawableGeometry[Index].ScaleMatrix, "Scale");
 
 		DrawableShader->SetVector1(1.0f, "IsColour");
-		DrawableShader->SetVector1(1.0f, "WorldSpaceProjection");
+		DrawableShader->SetVector1((this->DrawableGeometry[Index].IsGeometryInWorldPosition ? 1.0f : 0.0f), "WorldSpaceProjection");
 		DrawableShader->SetVector4(glm::vec4(1.0f, 0.0f, 0.0f, 1.0f), "Colour");
 
 		glDrawElements(GL_TRIANGLES, this->DrawableGeometry[Index].Indices.size(), GL_UNSIGNED_INT, 0);
@@ -187,12 +229,17 @@ void EditorWorkspace::DrawGeometryScene(Shader* DrawableShader, const glm::mat4&
 
 void EditorWorkspace::CopyObject(int Index)
 {
-
+	//Just copy the element into an object clipboard.
+	this->GeometryClipboard = &this->DrawableGeometry[Index];
 }
 
 void EditorWorkspace::PasteObject(int Index)
 { 
-
+	if (this->GeometryClipboard != nullptr)
+	{
+		this->DrawableGeometry.push_back(*this->GeometryClipboard);
+		this->GeometryClipboard = nullptr; // Clear the pointer after its done
+	}
 }
 
 void EditorWorkspace::DestroyBlocks(int Index)

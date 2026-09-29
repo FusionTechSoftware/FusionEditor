@@ -129,6 +129,7 @@ class ComponentsWindowRenderHandler
 		void									Destroy(int Index);
 
 		int										SelectedIndex;
+		std::string								ReturnEditMode(void);
 		EditorWorkspace&						ReturnEditorWorkspaceObject(void);
 		ImVec2									ReturnRegionContentAvail(void);
 		ImVec2									ReturnPositionViewport(void);
@@ -185,6 +186,7 @@ class ComponentsWindowRenderHandler
 
 		std::map<std::string, ScriptInfomation>	ScriptContents;
 
+		std::string								CurrentEditMode			= "Instance Mode";
 		std::string								CurrentWidget			= "Geometry";
 		std::vector<std::string>				ToolsList				= {"None"};
 		std::vector<std::string>				GroupFolders			= { "Textures","Skybox","Models","Shader" };

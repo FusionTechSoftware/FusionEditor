@@ -47,8 +47,17 @@ class EditorUtilites
 		static std::vector<VertexPoint>		GetWorldPointsFromMatrix(const std::vector<float>& Vertices, const glm::mat4& NewMatrix);
 		static std::vector<float>			ConvertPositionToVertex(const std::vector<VertexPoint>& Vertices);
 		static std::vector<float>			GetPosition(const std::vector<float>& FloatVector);
+		static std::vector<float>			UpdateWorldSpaceGeometryFromMatrix(const std::vector<float>& Vertices, const glm::mat4& NewMatrix);
 		static std::vector<glm::vec3>		GroupVector3(const std::vector<float>& FloatVector);
 		static RayResult					GetRayAndDirectionFromMouse(const glm::mat4& Projection, const glm::mat4& View, double MouseX, double MouseY, int Width, int Height);
+
+
+		static bool RayIntersectsAABB(
+			const glm::vec3& Origin,
+			const glm::vec3& Direction,
+			const glm::vec3& Min,
+			const glm::vec3& Max,
+			float& Distance);
 };
 
 #endif

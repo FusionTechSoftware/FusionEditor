@@ -36,6 +36,7 @@ class Camera
         float           Height;
         float           Near;
         float           Far;
+        float           FieldOfView;
     private:
 
         glm::vec3       Position;

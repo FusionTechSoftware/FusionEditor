@@ -130,6 +130,68 @@ void EditorMain::StartEngine(void)
     this->NewSessionManager.CreateFrameBuffer();
 }
 
+void EditorMain::DrawDebugBoxes(const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& Minimum, const glm::vec3& Maximum)
+{
+    // This essentially would be copied from the main engine branch of the system and would be a debug tool needed to select objects.
+
+    glUseProgram(0);
+
+    // Submit the projection and view to te intermidate renderer.
+    glMatrixMode(GL_PROJECTION);
+    glLoadMatrixf(glm::value_ptr(Projection));
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadMatrixf(glm::value_ptr(View));
+    glBegin(GL_LINES);
+    // Draw the bounding box, just as how you would normally check the bounding box
+
+    glColor3f(1.0f, 0.0f, 0.0f);
+    glVertex3f(Minimum.x, Minimum.y, Minimum.z);
+    glVertex3f(Maximum.x, Minimum.y, Minimum.z);
+
+    glVertex3f(Maximum.x, Minimum.y, Minimum.z);
+    glVertex3f(Maximum.x, Maximum.y, Minimum.z);
+
+    glVertex3f(Maximum.x, Maximum.y, Minimum.z);
+    glVertex3f(Minimum.x, Maximum.y, Minimum.z);
+
+    glVertex3f(Minimum.x, Maximum.y, Minimum.z);
+    glVertex3f(Minimum.x, Minimum.y, Minimum.z);
+
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(Minimum.x, Minimum.y, Maximum.z);
+    glVertex3f(Maximum.x, Minimum.y, Maximum.z);
+
+    glVertex3f(Maximum.x, Minimum.y, Maximum.z);
+    glVertex3f(Maximum.x, Maximum.y, Maximum.z);
+
+    glVertex3f(Maximum.x, Maximum.y, Maximum.z);
+    glVertex3f(Minimum.x, Maximum.y, Maximum.z);
+
+    glVertex3f(Maximum.x, Maximum.y, Maximum.z);
+    glVertex3f(Minimum.x, Minimum.y, Maximum.z);
+
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex3f(Minimum.x, Minimum.y, Minimum.z);
+    glVertex3f(Minimum.x, Minimum.y, Maximum.z);
+
+    glVertex3f(Maximum.x, Minimum.y, Minimum.z);
+    glVertex3f(Maximum.x, Minimum.y, Maximum.z);
+
+    glVertex3f(Maximum.x, Maximum.y, Minimum.z);
+    glVertex3f(Maximum.x, Maximum.y, Maximum.z);
+
+    glVertex3f(Minimum.x, Maximum.y, Minimum.z);
+    glVertex3f(Maximum.x, Maximum.y, Maximum.z);
+
+    glEnd();
+    glFlush();
+}
+
+glm::vec3 GlobalBoundMin;
+glm::vec3 GlobalBoundMax;
+
+
 void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
 {
     if (!ImGui::IsMouseClicked(ImGuiMouseButton_Left))  { return; } //Return if not selected at all
@@ -157,14 +219,79 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
     //Transfer viewport (ImGui) coordinates into Normalised Device Coordinates (NDC)
     float MouseX = (2.0f * (CurrentMousePosition.x - ViewportItemRectMin.x)) / ViewportItemRectSize.x - 1.0f;
     float MouseY = 1.0f - (2.0f * (CurrentMousePosition.y - ViewportItemRectMin.y)) / ViewportItemRectSize.y;
+    float MouseZ = 1.0f;
 
-    this->RayOrigin     = NewCamera.ReturnCameraPosition();
-    this->RayDirection  = NewCamera.Orientation;
+    glm::mat4 Projection =
+        NewCamera.ReturnProjectionMatrix();
 
-    // @TODO - Remove when done!
-    std::cout << "Origin: " << this->RayOrigin.x << "," << this->RayOrigin.y << "," << this->RayOrigin.z << "\n";
-    std::cout << "Direction: " << this->RayDirection.x << "," << this->RayDirection.y << "," << this->RayDirection.z << "\n";
- 
+    glm::mat4 View =
+        NewCamera.ReturnViewMatrix();
+
+    glm::mat4 InverseViewProjection =
+        glm::inverse(Projection * View);
+
+
+    // Near point
+    glm::vec4 NearPoint =
+        InverseViewProjection *
+        glm::vec4(MouseX, MouseY, -1.0f, 1.0f);
+
+    NearPoint /= NearPoint.w;
+
+
+    // Far point
+    glm::vec4 FarPoint =
+        InverseViewProjection *
+        glm::vec4(MouseX, MouseY, 1.0f, 1.0f);
+
+    FarPoint /= FarPoint.w;
+
+
+    // ------------------------------------------------------------
+    // World ray
+    // ------------------------------------------------------------#
+
+    std::cout
+        << "Mouse NDC: "
+        << MouseX << ", "
+        << MouseY
+        << "\n";
+
+    std::cout
+        << "Near: "
+        << NearPoint.x << ", "
+        << NearPoint.y << ", "
+        << NearPoint.z
+        << "\n";
+
+    std::cout
+        << "Far: "
+        << FarPoint.x << ", "
+        << FarPoint.y << ", "
+        << FarPoint.z
+        << "\n";
+
+    std::cout
+        << "Ray: "
+        << RayDirection.x << ", "
+        << RayDirection.y << ", "
+        << RayDirection.z
+        << "\n";
+
+    glm::vec3 RayOrigin =
+        glm::vec3(NearPoint);
+
+    glm::vec3 RayDirection =
+        glm::normalize(
+            glm::vec3(FarPoint) -
+            glm::vec3(NearPoint)
+        );
+
+
+    // Store it
+    this->RayOrigin = RayOrigin;
+    this->RayDirection = RayDirection;
+
     float ClosestValue  = FLT_MAX;
     int Selected        = -1;
 
@@ -179,18 +306,24 @@ void EditorMain::SelectObjectFromWorld(ImVec2 ViewportCursorPosition)
 
         glm::vec3 LocalOrigin       = glm::vec3(InverseModel * glm::vec4(this->RayOrigin, 1.0f));
         glm::vec3 LocalDirection    = glm::normalize(glm::vec3(InverseModel * glm::vec4(this->RayDirection, 0.0f)));
-        glm::vec3 LocalBoundingMin  = glm::vec3(ModelMatrix * glm::vec4(CurrentObject.GeometryBoundingBox.MinimumBounds, 1.0f));
-        glm::vec3 LocalBoundingMax  = glm::vec3(ModelMatrix * glm::vec4(CurrentObject.GeometryBoundingBox.MaximumBounds, 1.0f)); // We could change the bounds from normalised space into screen space?
+
+        glm::vec3 LocalBoundingMin = glm::vec3((CurrentObject.TranslationMatrix * CurrentObject.RotationMatrix * CurrentObject.ScaleMatrix) * glm::vec4(CurrentObject.GeometryBoundingBox.MinimumBounds, 1.0f));
+        glm::vec3 LocalBoundingMax = glm::vec3((CurrentObject.TranslationMatrix * CurrentObject.RotationMatrix * CurrentObject.ScaleMatrix) * glm::vec4(CurrentObject.GeometryBoundingBox.MaximumBounds, 1.0f));
+
+        GlobalBoundMin = LocalBoundingMin;
+        GlobalBoundMax = LocalBoundingMax;
 
         std::cout << LocalBoundingMin.x << LocalBoundingMin.y << LocalBoundingMin.z << "\n";
         std::cout << LocalBoundingMax.x << LocalBoundingMax.y << LocalBoundingMax.z << "\n";
 
-        if (EditorUtilites::DoesRayIntersectBounds(LocalOrigin, LocalDirection, LocalBoundingMin, LocalBoundingMax, T))
+        if (EditorUtilites::RayIntersectsAABB(this->RayOrigin, this->RayDirection, LocalBoundingMin, LocalBoundingMax, T))
         {
             if (T < ClosestValue)
             {
                 ClosestValue    = T;
                 Selected        = Index;
+
+                std::cout << "Selected item" << "\n";
 
                 glm::vec3 LocalHit = LocalOrigin + LocalDirection * T;
                 glm::vec3 WorldHit = glm::vec3(ModelMatrix * glm::vec4(LocalHit, 1.0f));
@@ -221,10 +354,30 @@ void EditorMain::DebugSelectionLine(void)
     glColor3f(1.0f, 0.0f, 0.0f);
     glVertex3f(RayOrigin.x, RayOrigin.y, RayOrigin.z);
     glVertex3f(
-        RayOrigin.x + RayDirection.x * 100,
-        RayOrigin.y + RayDirection.y * 100,
-        RayOrigin.z + RayDirection.z * 100);
+        RayOrigin.x + RayDirection.x * 1000.0f,
+        RayOrigin.y + RayDirection.y * 1000.0f,
+        RayOrigin.z + RayDirection.z * 1000.0f); // These would appear to fire far far away as a debug.
     glEnd();
+
+
+    // Draw points as a debug. This is still using the weaker intermediate mode of rendering.
+    // Just a debug!
+    glPointSize(10.0f);
+    glBegin(GL_POINTS);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(RayOrigin.x, RayOrigin.y, RayOrigin.z);
+    glEnd();
+
+
+    glPointSize(10.0f);
+    glBegin(GL_POINTS);
+    glColor3f(0.0f, 0.0f, 1.0f);
+    glVertex3f(
+        RayOrigin.x + RayDirection.x,
+        RayOrigin.y + RayDirection.y,
+        RayOrigin.z + RayDirection.z);
+    glEnd();
+    glFlush(); // Remember to clean up!
 }
 
 void EditorMain::RenderEngine(void)
@@ -259,6 +412,7 @@ void EditorMain::RenderEngine(void)
         this->SpecialKeyFunction();
         this->SelectObjectFromWorld(this->NewSessionManager.GetEditorToolbar().ReturnPositionViewport());
 
+        this->DrawDebugBoxes(this->NewSessionManager.GetComponents().EngineCamera.ReturnProjectionMatrix(), this->NewSessionManager.GetComponents().EngineCamera.ReturnViewMatrix(), GlobalBoundMin, GlobalBoundMax);
         this->DebugSelectionLine();
 
         this->NewSessionManager.UnbindFrameBuffer();

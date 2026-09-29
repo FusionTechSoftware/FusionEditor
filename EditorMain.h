@@ -20,6 +20,7 @@ class EditorMain
         void                        SpecialKeyFunction(void);
 
     private:
+        void                        DrawDebugBoxes(const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& Minimum, const glm::vec3& Maximum);
         void                        RunBackgroundProcess(void);
         void                        SelectObjectFromWorld(ImVec2 ViewportCursorPosition);
         void                        DebugSelectionLine(void);

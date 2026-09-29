@@ -19,9 +19,9 @@ struct TextureFileFormat
 	std::string					SpecularTexture;
 	std::string					NormalTexture;
 
-	unsigned int				DiffuseID = -1;
-	unsigned int				SpecularID = -1;
-	unsigned int				NormalID = -1;
+	unsigned int				DiffuseID	= -1;
+	unsigned int				SpecularID	= -1;
+	unsigned int				NormalID	= -1;
 };
 
 struct ExternalData
@@ -34,6 +34,7 @@ struct GeometryData
 {
 	std::vector<VertexPoint>	WorldPositions;
 	std::vector<float>			Vertices;
+	std::vector<float>			OriginalVertices;
 	std::vector<unsigned int>	Indices;
 	BoundingBox					GeometryBoundingBox;
 	TextureFileFormat			GeometryTextureFormat;
@@ -51,6 +52,7 @@ struct GeometryData
 	unsigned int				VertexArray;
 	unsigned int				VertexBuffer;
 	unsigned int				ElementBuffer;
+	bool						IsGeometryInWorldPosition;
 };
 
 class EditorWorkspace
@@ -69,6 +71,8 @@ class EditorWorkspace
 		void						CopyObject(int Index);
 		void						PasteObject(int Index);
 		void						SetSelectedIndex(int Index);
+		void						UpdateWorldGeometryData(int Index, const glm::mat4& Matrix);
+		void						UpdateVertices(int Index, const std::vector<float>& NewVertices, bool ModifyVertices);
 
 		void						DrawGeometryScene(Shader* DrawableShader, const glm::mat4& Projection, const glm::mat4& View, const glm::vec3& CameraPosition);
 		void						DestroyBlocks(int Index);
@@ -85,6 +89,7 @@ class EditorWorkspace
 	private:
 		bool						DoesIndexExist(int Index);
 		int							GivenSelectedIndex;
+		GeometryData*				GeometryClipboard;
 
 		BoundsSystem				BoundCreationSystem;
 		BoundsRenderer				BoundDrawingSystem;

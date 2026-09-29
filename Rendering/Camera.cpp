@@ -61,6 +61,7 @@ void Camera::BindCameraMatrix(float FieldOfView,float NearPlane,float FarPlane,c
 
     this->Near              = NearPlane;
     this->Far               = FarPlane;
+    this->FieldOfView       = FieldOfView;
     this->ProjectionMatrix  = glm::perspective(glm::radians(FieldOfView),(float)(this->Width/this->Height),NearPlane,FarPlane);
     this->ViewMatrix        = glm::lookAt(BindedPosition,BindedPosition+this->Orientation,this->UpPosition);
 }

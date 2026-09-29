@@ -73,6 +73,7 @@ std::string ComponentsWindowRenderHandler::PromptFileImport(const char* Filter, 
 	return "invalid";
 }
 
+std::string ComponentsWindowRenderHandler::ReturnEditMode(void)						{ return this->CurrentEditMode; }
 EditorWorkspace& ComponentsWindowRenderHandler::ReturnEditorWorkspaceObject(void)	{ return this->NewWorkspace; }
 ImVec2 ComponentsWindowRenderHandler::ReturnRegionContentAvail(void)				{ return this->CurrentViewportSize; }
 ImVec2 ComponentsWindowRenderHandler::ReturnPositionViewport(void)					{ return this->CurrentViewportPosition; }
@@ -269,6 +270,45 @@ void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentVa
 	static double OffsetX, OffsetY = 0.0;
 	double MouseX, MouseY;
 
+	// @TODO: Change the window fullscreen mode system, where if the user enters a new monitor region, it should adhere and resize to that 
+	// window fullscreen (Could have some problems with resolution) 
+
+	if (glfwGetMouseButton(EngineWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+	{
+		if (glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED))
+		{
+			double MouseX, MouseY;
+			glfwGetCursorPos(EngineWindow, &MouseX, &MouseY);
+
+			// We could've used the GLFW_RELEASE command to reset dragging, however its unneeded extra work.
+			if (!Dragging)
+			{
+				Dragging = true;
+				int CurrentWindowX, CurrentWindowY;
+
+				// Gather the current window position and the offsets.
+				glfwGetWindowPos(EngineWindow, &CurrentWindowX, &CurrentWindowY);
+				OffsetX = MouseX;
+				OffsetY = MouseY;
+			}
+
+
+			// We would have used an adjustment system to gather the cursor pos and offset the window based upon the window position
+			double GlobalX, GlobalY;
+			POINT WindowPoint;
+			glfwGetCursorPos(EngineWindow, &GlobalX, &GlobalY);
+			GetCursorPos(&WindowPoint);
+
+			glfwSetWindowPos(EngineWindow,
+				WindowPoint.x - (int)OffsetX,
+				WindowPoint.y - (int)OffsetY);
+		}
+	}
+	else
+	{
+		Dragging = false;
+	}
+
 	if (ImGui::BeginMainMenuBar())
 	{
 		ImGuiUtilites::GradientRect(
@@ -335,49 +375,9 @@ void ComponentsWindowRenderHandler::DrawToolbarWidget(InterfaceValues& CurrentVa
 			ImGui::SameLine(0, Spacing);
 		}
 
-		// @TODO: Change the window fullscreen mode system, where if the user enters a new monitor region, it should adhere and resize to that 
-		// window fullscreen (Could have some problems with resolution) 
-
-		if (glfwGetMouseButton(EngineWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-		{
-			if (glfwGetWindowAttrib(EngineWindow, GLFW_MAXIMIZED)) 
-			{
-				double MouseX, MouseY;
-				glfwGetCursorPos(EngineWindow, &MouseX, &MouseY);
-
-				// We could've used the GLFW_RELEASE command to reset dragging, however its unneeded extra work.
-				if (!Dragging)
-				{
-					Dragging = true;
-					int CurrentWindowX, CurrentWindowY;
-
-					// Gather the current window position and the offsets.
-					glfwGetWindowPos(EngineWindow, &CurrentWindowX, &CurrentWindowY);
-					OffsetX = MouseX;
-					OffsetY = MouseY;
-				}
-
-
-				// We would have used an adjustment system to gather the cursor pos and offset the window based upon the window position
-				double GlobalX, GlobalY;
-				POINT WindowPoint;
-				glfwGetCursorPos(EngineWindow, &GlobalX, &GlobalY);
-				GetCursorPos(&WindowPoint);
-
-				glfwSetWindowPos(EngineWindow,
-					WindowPoint.x - (int)OffsetX,
-					WindowPoint.y - (int)OffsetY);
-			}
-		}
-		else
-		{
-			Dragging = false;
-		}
-		
-
 #ifdef ALLOW_FEEDBACK
 		ImGui::SetCursorPosX(ImGui::GetWindowWidth() - (ButtonWidth * 3) - 400);
-		if (ImGuiUtilites::ButtonGradient("Have Feedback?", ImVec2(ImGui::CalcTextSize(" Have Feedback? ").x, ImGui::GetFrameHeight()), ImVec4(20.0f, 20.0f, 20.0f, 120.0f), this->BlueButtonHovered, this->BlueButtonHovered, this->BlueButtonHovered))
+		if (ImGuiUtilites::ButtonGradient("Got Feedback?", ImVec2(ImGui::CalcTextSize(" Got Feedback? ").x, ImGui::GetFrameHeight()), ImVec4(20.0f, 20.0f, 20.0f, 120.0f), this->BlueButtonHovered, this->BlueButtonHovered, this->BlueButtonHovered))
 		{
 			this->FeedbackToggle = !this->FeedbackToggle;
 		}
@@ -592,6 +592,7 @@ void ComponentsWindowRenderHandler::DrawGeometryToolpack(Camera* EngineCamera, S
 	ImGui::SetCursorPos(ImVec2(990.0f, 3.0f));
 	ImGui::SetNextItemWidth(200.0f);
 	ImGui::Combo("Geometry Mode",&SelectionMode, SelectionItems,IM_ARRAYSIZE(SelectionItems));
+	this->CurrentEditMode = SelectionItems[SelectionMode]; // Update the selection mode for geometry editing.
 
 	ImGui::PopItemWidth();
 }
@@ -662,8 +663,11 @@ void ComponentsWindowRenderHandler::ShowEditGizmo(Camera* EngineCamera, int View
 	// would make it more efficent as it changes per user frame update than every frame.
 	
 	// This is moved from EditorMain.cpp -> ComponentsWindow.cpp
+	ImGuizmo::BeginFrame();
 	ImGuizmo::SetOrthographic(false);
-	ImGuizmo::SetDrawlist();
+	ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+
+	ImVec2 CurrentMousePosition = ImGui::GetMousePos();
 		
 	ImVec2 ViewportPos				= ImGui::GetWindowPos();
 	ImVec2 ViewportMinimumRegion	= ImGui::GetWindowContentRegionMin();
@@ -689,12 +693,12 @@ void ComponentsWindowRenderHandler::ShowEditGizmo(Camera* EngineCamera, int View
 			this->NewWorkspace.GetRotationMatrix(this->SelectedIndex) *
 			this->NewWorkspace.GetScaleMatrix(this->SelectedIndex);
 
-
 		ImGuizmo::Manipulate(
 			glm::value_ptr(EngineCamera->ReturnViewMatrix()),
 			glm::value_ptr(EngineCamera->ReturnProjectionMatrix()),
 			(
-				this->CurrentToolValue == VALUE_TRANSLATE ? ImGuizmo::TRANSLATE : (this->CurrentToolValue == VALUE_ROTATE ? ImGuizmo::ROTATE : (this->CurrentToolValue == VALUE_SCALE ? ImGuizmo::SCALE : ImGuizmo::SCALE))),
+				this->CurrentToolValue == VALUE_TRANSLATE ? ImGuizmo::TRANSLATE : (this->CurrentToolValue == VALUE_ROTATE ? ImGuizmo::ROTATE : (this->CurrentToolValue == VALUE_SCALE ? ImGuizmo::SCALE : ImGuizmo::SCALE))
+			),
 			ImGuizmo::LOCAL,
 			glm::value_ptr(ModelMatrix),
 			nullptr,
@@ -703,16 +707,24 @@ void ComponentsWindowRenderHandler::ShowEditGizmo(Camera* EngineCamera, int View
 
 		if (ImGuizmo::IsUsing())
 		{
+			std::cout << "Using" << "\n";
 			// Change the properties, Skew and perspective
 			// @FIX: We dont need skew or perspective. Perhaps use a float store or something? (Just get rid of it)
-			if (glm::decompose(ModelMatrix, this->ObjectScale, this->ObjectRotation, this->ObjectTranslation, Skew, Perspective))
-			{
-				if (this->ObjectScale.x <= 0.1 || this->ObjectScale.y <= 0.1 || this->ObjectScale.z <= 0.1) { return; }
+			
 
-				this->NewWorkspace.SetPosition(this->SelectedIndex, this->ObjectTranslation); // Moved the values of Translation, Rotation and Scale,
-				this->NewWorkspace.SetRotation(this->SelectedIndex, this->ObjectRotation);
-				this->NewWorkspace.SetScale(this->SelectedIndex, this->ObjectScale);
-			}
+			ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(ModelMatrix), &this->ObjectTranslation.x, &this->ObjectRotation.x, &this->ObjectScale.x); // This was and should not produce garbage values if one tool is being used in opposition to the other.#
+			this->NewWorkspace.SetPosition(this->SelectedIndex, this->ObjectTranslation);
+
+			//if (glm::decompose(ModelMatrix, this->ObjectScale, this->ObjectRotation, this->ObjectTranslation, Skew, Perspective))
+			//{
+			//	//if (this->ObjectScale.x <= 0.1 || this->ObjectScale.y <= 0.1 || this->ObjectScale.z <= 0.1) { return; }
+
+			//	std::cout << "LOL" << this->ObjectTranslation.x << "," << this->ObjectTranslation.y << "," << this->ObjectTranslation.z << "\n";
+
+			//	this->NewWorkspace.SetPosition(this->SelectedIndex, this->ObjectTranslation); // Moved the values of Translation, Rotation and Scale,
+			//	this->NewWorkspace.SetRotation(this->SelectedIndex, this->ObjectRotation);
+			//	this->NewWorkspace.SetScale(this->SelectedIndex, this->ObjectScale);
+			//}
 		}
 	}
 }
@@ -864,6 +876,7 @@ void ComponentsWindowRenderHandler::OpenScriptsInstance(const std::string& ItemN
 	{
 		ScriptContainer NewScriptContainer;
 		CodeEditor NewCodeWidget;
+		ModelObjectProperties NewObject;
 
 		NewScriptContainer.ScriptName = ItemName;
 		NewScriptContainer.ScriptContents = this->ScriptContents[ItemName].FileContents;
@@ -871,8 +884,19 @@ void ComponentsWindowRenderHandler::OpenScriptsInstance(const std::string& ItemN
 
 		NewCodeWidget.SetupCodeEditor(ItemName,this->ScriptContents[ItemName].FileContents);
 
+		NewObject.Translate = glm::vec3(0.0f, 0.0f, 0.0f);
+		NewObject.Rotation = glm::quat(0.0f, 0.0f, 0.0f, 0.0f);
+		NewObject.Scale = glm::vec3(0.0f, 0.0f, 0.0f);
+
+		NewObject.Index = this->ScriptInstanceIndex;
+		NewObject.LabelName = this->ScriptContents[ItemName].FileName;
+		NewObject.LabelPrefix = ICON_FA_SCROLL;
+
+		this->ObjectProperties.push_back(NewObject);
 		this->NewTextEditor.push_back(NewCodeWidget);
 		this->ScriptList.push_back(NewScriptContainer);
+
+		this->RedirectionList[this->ScriptInstanceIndex] = this->ScriptList.size() - 1;
 		this->ScriptInstanceIndex++;
 	}
 }
@@ -1055,7 +1079,7 @@ void ComponentsWindowRenderHandler::DrawSettings(InterfaceValues CurrentValues)
 
 void ComponentsWindowRenderHandler::DrawDropdownMenu(std::vector<ModelObjectProperties>& DropdownContents)
 {
-	ImGui::Begin("World Explorer");
+	ImGuiUtilites::BeginGradient("WorldEditor", this->DefaultButtonHovered);
 	ImGuiTreeNodeFlags CurrentFlags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
 
 	if (ImGui::BeginTable("EnviromentHirachy", 2, ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_BordersInnerV))

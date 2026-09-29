@@ -28,7 +28,7 @@ void CodeEditor::SetupCodeEditor(const std::string& FileName, const std::string&
 
 void CodeEditor::CopyTextToClipboard(const std::string& TextString)
 {
-	// @TODO: Just found out there is a function built into ImGui called ImGui::SetClipboardText() *FACEPALM*
+	// @TODO: Just found out there is a function built into ImGui called ImGui::SetClipboardText() :/
 	OpenClipboard(0);
 	EmptyClipboard();
 
@@ -57,7 +57,7 @@ void CodeEditor::DrawCodeEditor(InterfaceTextModule CurrentModule, bool* WindowA
 		this->SyntaxHighlight.GetLanguageDefinition().mName.c_str()
 	);
 	this->SyntaxHighlight.Render(CurrentModule.TextTitle.c_str());
-	if (ImGui::BeginPopupContextItem())
+	if (ImGui::BeginPopupContextItem()) 
 	{
 		if (ImGui::MenuItem("Copy Text")) { this->CopyTextToClipboard(CurrentModule.TextContainer); }; // @TODO: So far this copies the whole text to clipboard. In the future this should only copy the selected text to clipboard. If nothing selected then the whole text.
 		ImGui::Separator();
